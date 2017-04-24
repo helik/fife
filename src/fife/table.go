@@ -22,11 +22,15 @@ type Partitioner struct {
 func (t *Table) Contains(key string) bool {
     // check if key is in local partition & proceed normally
     // otherwise need to do a remote contains
+    panic("unimplemented table.Contains")
+    return false
 }
 
 func (t *Table) Get(key string) interface{} {
     // check if key is in local partition & proceed normally
     // otherwise need to do a remote get
+    panic("unimplemented table.Get")
+    return false //junk
 }
 
 func (t *Table) Put(key string, value interface{}) {
@@ -50,7 +54,7 @@ func (t *Table) GetPartition(partition int) map[string]interface{} {
     return t.Store[partition]
 }
 
-func (t *Table) isLocal(key string) {
+func (t *Table) isLocal(key string) bool {
     _, inLocalStore := t.Store[t.Partitioner.Which(key)]
     return inLocalStore
 }

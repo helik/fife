@@ -1,13 +1,15 @@
 package fife
 
-import "sync"
-import "labrpc"
+import ("sync"
+        "labrpc"
+        "log"
+ )
 
 type Fife struct {
     workers     []*labrpc.ClientEnd
     barrier     sync.WaitGroup
 
-    tables      
+    //tables
 }
 
 func StartControl(workers []*labrpc.ClientEnd, tables []Table) *Fife {
@@ -15,12 +17,25 @@ func StartControl(workers []*labrpc.ClientEnd, tables []Table) *Fife {
     return &f
 }
 
-func (f *Fife) CreateTable(partitions int, accumulator Accumulator, 
-    partitioner Partitioner) Table {
-    
+//playing around with this alternative that we can call from config without doing all the setup in config...
+func CreateFife(workers []*labrpc.ClientEnd) *Fife {
+  log.Printf("in fife.CreateFife")
+  fife := &Fife{}
+  fife.workers = workers
+  return fife
 }
 
-func (f *Fife) Run(kernelFunction KernelFunction, numPartitions int, 
+func (f *Fife) CreateTable(partitions int, accumulator Accumulator,
+    partitioner Partitioner) Table {
+    return Table{}
+}
+
+//done with this server
+func (*Fife) Kill() {
+
+}
+
+func (f *Fife) Run(kernelFunction KernelFunction, numPartitions int, //TODO should kernelFunction be a string, and numPartitions numInstances?
     args []interface{}) {
     // assign partitions for every table
     // send config messages to workers
