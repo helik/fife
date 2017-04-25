@@ -41,7 +41,7 @@ func make_config(t *testing.T, n int) *config {
   cfg.nWorkers = n
 	cfg.n = n + 1
 	cfg.applyErr = make([]string, cfg.n)
-	cfg.workers = make([]*Worker, cfg.n)
+	cfg.workers = make([]*Worker, cfg.nWorkers)
   //TODO do we need to init fife here?
 	cfg.connected = make([]bool, cfg.n)
 	cfg.endnames = make([][]string, cfg.n)

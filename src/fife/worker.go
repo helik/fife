@@ -12,7 +12,9 @@ type Worker struct {
     me                  int
 }
 
-func StartWorker(fife *labrpc.ClientEnd, workers []*labrpc.ClientEnd, kernelFunctions map[string]KernelFunction,
+//the test code or application will provide
+//kernel functions and tables here, separately from creation
+func (w *Worker) Setup(kernelFunctions map[string]KernelFunction,
     initialTables []Table) {
 
 }
@@ -28,7 +30,7 @@ func CreateWorker(fife *labrpc.ClientEnd, workers []*labrpc.ClientEnd, me int) *
 }
 
 //done with this server
-func (*Worker) Kill(){
+func (w *Worker) Kill(){
 
 }
 

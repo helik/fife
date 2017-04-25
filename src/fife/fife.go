@@ -8,16 +8,18 @@ import ("sync"
 type Fife struct {
     workers     []*labrpc.ClientEnd
     barrier     sync.WaitGroup
-
+//TODO could include some "ready" bool that gets switched after Setup called and completed
     //tables
 }
 
-func StartControl(workers []*labrpc.ClientEnd, tables []Table) *Fife {
-    f := Fife{workers: workers}
-    return &f
+//test code provides fife with tables
+//TODO if we are providing all tables, what's the job of createtable?
+func (f *Fife) Setup(tables []Table) {
+
 }
 
-//playing around with this alternative that we can call from config without doing all the setup in config...
+//Config uses this to set up a fife instance on a server.
+//Applicaiton using fife will later need to call Setup before fife is runnable
 func CreateFife(workers []*labrpc.ClientEnd) *Fife {
   log.Printf("in fife.CreateFife")
   fife := &Fife{}
@@ -31,7 +33,7 @@ func (f *Fife) CreateTable(partitions int, accumulator Accumulator,
 }
 
 //done with this server
-func (*Fife) Kill() {
+func (f *Fife) Kill() {
 
 }
 
