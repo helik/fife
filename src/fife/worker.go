@@ -42,20 +42,11 @@ type RunArgs struct {
 type RunReply struct {
 }
 
-//TODO: not sure what we want in DoneArgs and DoneReply
-type DoneArgs struct {
-
-}
-
-type DoneReply struct {
-
-}
 
 //TODO: do we want to return right away telling master that we have started running?
 //if so, then doneargs and donereply will be their own rpc.
 //otherwise, we can just not return to the master till our kernel function has finished,
 //and put any reply info in RunReply.
-//For now, I added DoneArgs and DoneReply strucs just in case. 
 func (w *Worker) Run(args *RunArgs, reply *RunReply) {
     // set me to this kernel instance number to use in myInstance()
     me = args.KernelNumber
@@ -64,9 +55,11 @@ func (w *Worker) Run(args *RunArgs, reply *RunReply) {
     w.kernelFunctions[args.KernelFunctionName](args.KernelArgs, w.tables)
 
     // tell master we are done
+    dArgs := &DoneArgs{}
+    dReply := &DoneReply{}
     ok := false
     for !ok {
-        ok = w.sendDone(args.Master)
+        ok = w.sendDone(dArgs, dReply, args.Master)
     }
 }
 
