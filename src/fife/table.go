@@ -7,14 +7,10 @@ type Table struct {
     Store           map[int]map[string]interface{}
     // PartitionMap maps partition # to worker machine # that stores that partition
     PartitionMap    map[int]int
-    Accumulator     Accumulator
-    Partitioner     Partitioner
 
     //private state
     myWorker        Worker  //TODO might be better to put this in common.go?
-    //buffer local updates to remotely stored keys. TODO not sure of the format we will want for this
-    buffer          map[int]map[string]interface{}
-    accumulator     Accumulator //TODO why are these here twice? 
+    accumulator     Accumulator //TODO why are these here twice?
     partitioner     Partitioner
 
     // updateBuffer maps key (string) to accumulated value to send in remote update
