@@ -2,6 +2,7 @@ package fife
 
 type Table struct {
     Name            string
+    //We get Store and Partition map filled by master fife when it starts this kernel
     // Store maps partition # to data store
     //     data store maps key (string) to data (interface{})
     Store           map[int]map[string]interface{}
@@ -9,8 +10,8 @@ type Table struct {
     PartitionMap    map[int]int
 
     //private state
-    myWorker        Worker  //TODO might be better to put this in common.go?
-    accumulator     Accumulator //TODO why are these here twice?
+    myWorker        *Worker  //TODO might be better to put this in common.go?
+    accumulator     Accumulator
     partitioner     Partitioner
 
     // updateBuffer maps key (string) to accumulated value to send in remote update
@@ -26,6 +27,21 @@ type Accumulator struct {
 //Function mapping key to that key's data partition
 type Partitioner struct {
     which func(key string) int
+}
+
+//Return a table with initialized but empty data structures
+//Intended for use on table setup.
+func MakeTable(a Accumulator, p Partitioner, w *Worker, name string) *Table {
+  t := &Table{}
+  t.accumulator = a
+  t.partitioner = p
+  t.myWorker = w
+  t.Name = name
+  //below will be filled in when fife starts using this table
+  t.Store = make(map[int]map[string]interface{})
+  t.PartitionMap = make(map[int]int)
+  t.updateBuffer = make(map[string]interface{})
+  return t
 }
 
 func (t *Table) Contains(key string) bool {

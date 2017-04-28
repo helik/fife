@@ -1,5 +1,6 @@
 package fife
 
+//TODO should tables be an arg to kernel function? 
 type KernelFunction func(args []interface{}, tables map[string]Table)
 
 var kernelInstance  int

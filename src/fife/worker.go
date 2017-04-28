@@ -17,10 +17,14 @@ type Worker struct {
 //Tables here only need Accumulators
 func (w *Worker) Setup(kernelFunctions map[string]KernelFunction,
     initialTables []Table) {
-
+    w.kernelFunctions = kernelFunctions
+    w.tables = make(map[string]Table)
+    for _, table := range(initialTables) {
+      w.tables[table.Name] = table
+    }
 }
 
-//playing around with this alternative that we can call from config without doing all the setup in config...
+//Called by the config file to create a worker server
 func CreateWorker(fife *labrpc.ClientEnd, workers []*labrpc.ClientEnd, me int) *Worker {
   log.Printf("worker %v in worker.CreateWorker", me)
   worker := &Worker{}
@@ -40,10 +44,17 @@ type RunArgs struct {
     KernelNumber            int
     KernelFunctionName      string
     KernelArgs              []interface{}
+    //some kind of data thing
 }
 
 type RunReply struct {
     Done    bool
+}
+
+//Called by RPC from fife master
+//Must be called before run 
+func (w *Worker) Config(/*init table data and partitions passed here*/) {
+
 }
 
 //TODO: do we want to return right away telling master that we have started running?
@@ -53,6 +64,7 @@ type RunReply struct {
 func (w *Worker) Run(args *RunArgs, reply *RunReply) {
     // set me to this kernel instance number to use in myInstance()
     kernelInstance = args.KernelNumber
+    //TODO need to get table data and partition map from kernel before we start
 
     // run kernel function
     w.kernelFunctions[args.KernelFunctionName](args.KernelArgs, w.tables)
