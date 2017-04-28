@@ -8,7 +8,7 @@ type Worker struct {
     workers             []*labrpc.ClientEnd
     fife                *labrpc.ClientEnd //workers will also need to communicate with master fife
     kernelFunctions     map[string]KernelFunction
-    tables              []Table
+    tables              map[string]Table
     me                  int
 }
 
@@ -54,6 +54,7 @@ type RunArgs struct {
 }
 
 type RunReply struct {
+    Done    bool
 }
 
 //TODO: do we want to return right away telling master that we have started running?
@@ -62,18 +63,12 @@ type RunReply struct {
 //and put any reply info in RunReply.
 func (w *Worker) Run(args *RunArgs, reply *RunReply) {
     // set me to this kernel instance number to use in myInstance()
-    me = args.KernelNumber
+    kernelInstance = args.KernelNumber
 
     // run kernel function
     w.kernelFunctions[args.KernelFunctionName](args.KernelArgs, w.tables)
 
-    // tell master we are done
-    dArgs := &DoneArgs{}
-    dReply := &DoneReply{}
-    ok := false
-    for !ok {
-        ok = w.sendDone(dArgs, dReply, args.Master)
-    }
+    reply.Done = true
 }
 
 func (w *Worker) sendDone(args *DoneArgs, reply *DoneReply) bool {
@@ -96,4 +91,52 @@ func (w *Worker) sendGet(args *GetArgs, reply *GetReply, worker int) bool {
 func (w *Worker) sendFlush(args *FlushArgs, reply *FlushReply, worker int) bool {
     ok := worker.Call("Worker.Flush", args, reply)
     return ok
+}
+
+// Worker RPC calls to remote tables
+
+type TableOpArgs struct {
+    TableName   string
+    Op          Op
+    Key         string
+    Value       interface{}
+}
+
+type TableOpReply struct {
+    Done        bool
+    Contains    bool
+    Get         interface{}
+}
+
+func (w *Worker) sendRemoteTableOp(worker int, tableName string, operation Op,
+    key string, value interface{}) TableOpReply {
+    args := TableOpArgs{
+        TableName: tableName,
+        Op: operation,
+        Key: key,
+        Value: value,
+    }
+    var reply TableOpReply
+    ok := w.workers[worker].Call("Worker.TableOpRPC", args, reply)
+    if !ok || !reply.Done {
+        // TODO: retry if the rpc failed?
+    }
+    return reply
+}
+
+func (w *Worker) TableOpRPC(args *TableOpArgs, reply *TableOpReply) {
+    targetTable := w.tables[args.TableName]
+
+    switch args.Op {
+    case CONTAINS:
+        reply.Contains = targetTable.Contains(args.Key)
+    case GET:
+        reply.Get = targetTable.Get(args.Key)
+    case PUT:
+        targetTable.Put(args.Key, args.Value)
+    case UPDATE:
+        targetTable.Update(args.Key, args.Value)
+    }
+
+    reply.Done = true
 }
