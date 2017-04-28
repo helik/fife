@@ -39,27 +39,13 @@ func (w *Worker) Kill(){
 
 }
 
-type RunArgs struct {
-    Master                  *labrpc.ClientEnd
-    KernelNumber            int
-    KernelFunctionName      string
-    KernelArgs              []interface{}
-    //some kind of data thing
-}
-
-type RunReply struct {
-    Done    bool
-}
-
 //Called by RPC from fife master
-//Must be called before run 
-func (w *Worker) Config(/*init table data and partitions passed here*/) {
-
+//Must be called before run
+func (w *Worker) Config(args *ConfigArgs, reply *ConfigReply) {
+  log.Printf("worker %v in config", w.me)
 }
 
-//TODO: do we want to return right away telling master that we have started running?
-//if so, then doneargs and donereply will be their own rpc.
-//otherwise, we can just not return to the master till our kernel function has finished,
+//we return to the master when our kernel function has finished,
 //and put any reply info in RunReply.
 func (w *Worker) Run(args *RunArgs, reply *RunReply) {
     // set me to this kernel instance number to use in myInstance()
@@ -70,11 +56,6 @@ func (w *Worker) Run(args *RunArgs, reply *RunReply) {
     w.kernelFunctions[args.KernelFunctionName](args.KernelArgs, w.tables)
 
     reply.Done = true
-}
-
-func (w *Worker) sendDone(args *DoneArgs, reply *DoneReply) bool {
-    ok := w.fife.Call("Fife.Done", args, reply)
-    return ok
 }
 
 // Worker RPC calls to remote tables

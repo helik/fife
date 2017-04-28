@@ -37,6 +37,19 @@ func (f *Fife) Kill() {
 
 }
 
+//Pass the workers initial data and table partitions
+//TODO what args should this have? from where is it called?
+func (f *Fife) ConfigWorkers(){
+  args := &ConfigArgs{}
+  reply := &ConfigReply{}
+  for _, w := range(f.workers){
+    ok := w.Call("Worker.Config", args, reply)
+    if ! ok {
+      //TODO do we want to repeat failed configs, or record them in some way? 
+    }
+  }
+}
+
 func (f *Fife) Run(kernelFunction KernelFunction, numPartitions int, //TODO should kernelFunction be a string, and numPartitions numInstances?
     args []interface{}) {
     // assign partitions for every table
@@ -44,24 +57,11 @@ func (f *Fife) Run(kernelFunction KernelFunction, numPartitions int, //TODO shou
     // add # of kernelFunctions (I think this is partitions) to barrier.Add()
     // dispatch kernelFunctions to workers (use Run RPC)
     // when kernelFunction returns/worker is done, call barrier.Done()
+
 }
 
 // only makes sense to call after Run()
 func (f *Fife) Barrier() {
     f.barrier.Wait()
     return
-}
-
-type DoneArgs struct {
-    worker      int
-}
-
-type DoneReply struct {
-
-}
-
-// Done RPC Handler
-func (f *Fife) Done() {
-    // this needs to communicate back to the Run method (using a channel?)
-    // to tell it that this worker is done
 }

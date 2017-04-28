@@ -39,9 +39,11 @@ func TestSetup(t *testing.T){
     table := MakeTable(Accumulator{}, Partitioner{}, w, "pasta")
     w.Setup(kernMap, []Table{*table})
     fmt.Println(w)
-    //now, add some data
-
   }
+
+  //call an rpc from master
+  cfg.fife.ConfigWorkers()
+
 }
 
 func TestRPCs(t *testing.T){
