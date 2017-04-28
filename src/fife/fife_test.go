@@ -35,12 +35,12 @@ func TestSetup(t *testing.T){
   kernMap := map[string]KernelFunction{"hello":kernel_simple}
 
   //init workers
-  for i, w := range(cfg.workers){
+  for _, w := range(cfg.workers){
     table := MakeTable(Accumulator{}, Partitioner{}, w, "pasta")
     w.Setup(kernMap, []Table{*table})
     fmt.Println(w)
     //now, add some data
-    
+
   }
 }
 
