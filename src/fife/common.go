@@ -12,33 +12,33 @@ func myInstance() int {
 //RPC calls for non-local data
 //used in both worker.go and table.go
 
-type GetArgs {
+type GetArgs struct {
     Table     int
     Key       string
 }
 
-type GetReply {
+type GetReply struct {
     Value     interface{}
 }
 
-type PutArgs {
+type PutArgs struct {
     Table     int
     Key       string
     Value     interface{}
 }
 
-type PutReply {
+type PutReply struct {
     Success   bool
 }
 
 //TODO will a flush really be different than a put?
-type FlushArgs {
+type FlushArgs struct {
     Table     int
     Key       string
     Value     interface{}
 }
 
-type FlushReply {
+type FlushReply struct {
     Success   bool
 }
 
@@ -46,12 +46,22 @@ func myWorker() *Worker {
     return worker
 }
 
-const (
-    // op types
-    CONTAINS = "Contains"
-    GET      = "Get"
-    PUT      = "Put"
-    UPDATE   = "Update"
-)
+//enum-like listing of possible states
+type Op int
 
-type Op string
+const (
+	CONTAINS Op = iota
+	GET
+	PUT
+  UPDATE
+)
+//
+// const (
+//     // op types
+//     CONTAINS = "Contains"
+//     GET      = "Get"
+//     PUT      = "Put"
+//     UPDATE   = "Update"
+// )
+//
+// type Op string

@@ -72,24 +72,24 @@ func (w *Worker) Run(args *RunArgs, reply *RunReply) {
 }
 
 func (w *Worker) sendDone(args *DoneArgs, reply *DoneReply) bool {
-    ok := fife.Call("Fife.Done", args, reply)
+    ok := w.fife.Call("Fife.Done", args, reply)
     return ok
 }
 
 // Worker RPC calls to remote tables
 // worker is the index of the worker who has the data we want
 func (w *Worker) sendPut(args *PutArgs, reply *PutReply, worker int) bool {
-    ok := worker.Call("Worker.Put", args, reply)
+    ok := w.workers[worker].Call("Worker.Put", args, reply)
     return ok
 }
 
 func (w *Worker) sendGet(args *GetArgs, reply *GetReply, worker int) bool {
-    ok := worker.Call("Worker.Get", args, reply)
+    ok := w.workers[worker].Call("Worker.Get", args, reply)
     return ok
 }
 
 func (w *Worker) sendFlush(args *FlushArgs, reply *FlushReply, worker int) bool {
-    ok := worker.Call("Worker.Flush", args, reply)
+    ok := w.workers[worker].Call("Worker.Flush", args, reply)
     return ok
 }
 
