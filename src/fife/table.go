@@ -8,13 +8,20 @@ type Table struct {
     PartitionMap    map[int]int
     Accumulator     Accumulator
     Partitioner     Partitioner
+
+    //private state
+    myWorker        Worker  //TODO might be better to put this in common.go?
+    //buffer local updates to remotely stored keys. TODO not sure of the format we will want for this
+    buffer          map[int]map[string]interface{}
 }
 
+//Tells us how to treat updates for a table item 
 type Accumulator struct {
     Init        func(value interface{}) interface{}
     Accumulate  func(originalValue interface{}, newValue interface{}) interface{}
 }
 
+//Function mapping key to that key's data partition
 type Partitioner struct {
     Which func(key string) int
 }

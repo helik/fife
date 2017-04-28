@@ -8,10 +8,10 @@ import (
 )
 
 
-func Test1(t *testing.T){
+func TestConfig(t *testing.T){
   workers := 3
   cfg := make_config(t, workers)
-  //check workers and fife 
+  //check workers and fife
   for _, w := range(cfg.workers) {
     if w == nil {
       t.Fatalf("worker not created by config")
@@ -23,6 +23,6 @@ func Test1(t *testing.T){
   fmt.Println("...passed")
 }
 
-func TestStartWorkers(t *testing.T){
+func TestRPCs(t *testing.T){
 
 }

@@ -13,7 +13,7 @@ type Worker struct {
 }
 
 //the test code or application will provide
-//kernel functions and tables here, separately from creation
+//kernel functions and table accumulators and partitioners here, separately from creation
 func (w *Worker) Setup(kernelFunctions map[string]KernelFunction,
     initialTables []Table) {
 
@@ -27,6 +27,18 @@ func CreateWorker(fife *labrpc.ClientEnd, workers []*labrpc.ClientEnd, me int) *
   worker.workers = workers
   worker.me = me
   return worker
+}
+
+func (w *Worker) Get(args *GetArgs, reply *GetReply) {
+
+}
+
+func (w *Worker) Put(args *PutArgs, reply *PutReply) {
+
+}
+
+func (w *Worker) Flush(args *FlushArgs, reply *FlushReply) {
+
 }
 
 //done with this server
@@ -43,7 +55,6 @@ type RunArgs struct {
 
 type RunReply struct {
 }
-
 
 //TODO: do we want to return right away telling master that we have started running?
 //if so, then doneargs and donereply will be their own rpc.
@@ -65,9 +76,24 @@ func (w *Worker) Run(args *RunArgs, reply *RunReply) {
     }
 }
 
-func (w *Worker) sendDone(args *DoneArgs, reply *DoneReply, master *labrpc.ClientEnd) bool {
-    ok := master.Call("Fife.Done", args, reply)
+func (w *Worker) sendDone(args *DoneArgs, reply *DoneReply) bool {
+    ok := fife.Call("Fife.Done", args, reply)
     return ok
 }
 
 // Worker RPC calls to remote tables
+// worker is the index of the worker who has the data we want
+func (w *Worker) sendPut(args *PutArgs, reply *PutReply, worker int) bool {
+    ok := worker.Call("Worker.Put", args, reply)
+    return ok
+}
+
+func (w *Worker) sendGet(args *GetArgs, reply *GetReply, worker int) bool {
+    ok := worker.Call("Worker.Get", args, reply)
+    return ok
+}
+
+func (w *Worker) sendFlush(args *FlushArgs, reply *FlushReply, worker int) bool {
+    ok := worker.Call("Worker.Flush", args, reply)
+    return ok
+}

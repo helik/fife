@@ -18,6 +18,7 @@ func partitioner(key string) int {
     return 1
 }
 
+//Kernel function
 func countWords(args []interface{}) {
     documents := args[0].(Table)
     words := args[1].(Table)
@@ -34,13 +35,14 @@ func countWords(args []interface{}) {
     }
 }
 
+//control funciton
 func wordCount() {
     ff := fife.Make()
 
     documents := ff.CreateTable(1, Accumulator{},
         Partitioner{partitioner})
 
-    words := ff.CreateTable(1, 
+    words := ff.CreateTable(1,
         Accumulator{
             func(value interface{}) interface{} {return value},
             func(original interface{}, newVal interface{}) interface{} {
