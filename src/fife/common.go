@@ -7,7 +7,7 @@ import (
 //TODO should tables be an arg to kernel function?
 type KernelFunction func(args []interface{}, tables map[string]Table)
 
-var kernelInstance  int //Note: different from worker number 
+var kernelInstance  int //Note: different from worker number
 var worker          *Worker
 
 func myInstance() int {
@@ -22,6 +22,14 @@ func myWorker() *Worker {
 type TableData struct {
   Data                      map[int]map[string]interface{}
   Partitions                map[int]int
+}
+
+//helper that initializes maps for TableData struct
+func MakeTableData() TableData{
+  data := TableData{}
+  data.Data = make(map[int]map[string]interface{})
+  data.Partitions = make(map[int]int)
+  return data 
 }
 
 type RunArgs struct {

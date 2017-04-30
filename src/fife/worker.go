@@ -57,7 +57,6 @@ func (w *Worker) Config(args *ConfigArgs, reply *ConfigReply) {
     tmp.PartitionMap = item.Partitions
     w.tables[tableName] = tmp
   }
-  log.Printf("worker %v in config", w.me)
 }
 
 //we return to the master when our kernel function has finished,

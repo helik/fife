@@ -13,6 +13,8 @@ type Table struct {
     myWorker        *Worker  //TODO might be better to put this in common.go?
     accumulator     Accumulator
     partitioner     Partitioner
+    nPartitions     int //The number of partitions,
+                        //and the largest partition that the partitioner is allowed to return
 
     // updateBuffer maps key (string) to accumulated value to send in remote update
     updateBuffer    map[string]interface{}
@@ -25,18 +27,21 @@ type Accumulator struct {
 }
 
 //Function mapping key to that key's data partition
+//TODO Currently, we break if partitioner returns something larger than nPartitions - 1
+//because partitions 0 through npartitions - 1 are allocated in fife.partitionTables
+//Is that ok? Should we do a safety %nPartitions whenever someone calls which()?
 type Partitioner struct {
     which func(key string) int
 }
 
 //Return a table with initialized but empty data structures
 //Intended for use on table setup.
-func MakeTable(a Accumulator, p Partitioner, w *Worker, name string) *Table {
+func MakeTable(a Accumulator, p Partitioner, partitions int, name string) *Table {
   t := &Table{}
   t.accumulator = a
   t.partitioner = p
-  t.myWorker = w
   t.Name = name
+  t.nPartitions = partitions
   //below will be filled in when fife starts using this table
   t.Store = make(map[int]map[string]interface{})
   t.PartitionMap = make(map[int]int)
