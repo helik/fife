@@ -38,23 +38,31 @@ func (f *Fife) Kill() {
 }
 
 //Pass the workers initial data and table partitions
-//TODO what args should this have? from where is it called?
-func (f *Fife) ConfigWorkers(){
+//Called by kernel function
+//Returns true if all workers successfully configed.
+//TODO what args should this have?
+func (f *Fife) ConfigWorkers() bool {
   args := &ConfigArgs{}
   reply := &ConfigReply{}
+  failure := false
+  //TODO hand follower some data
   for _, w := range(f.workers){
     ok := w.Call("Worker.Config", args, reply)
+    failure = failure || !ok
     if ! ok {
-      //TODO do we want to repeat failed configs, or record them in some way? 
+      //TODO do we want to repeat failed configs, or record them in some way?
     }
   }
+  return !failure
 }
 
-func (f *Fife) Run(kernelFunction KernelFunction, numPartitions int, //TODO should kernelFunction be a string, and numPartitions numInstances?
+//Pass worker the string key to the function they should use
+func (f *Fife) Run(kernelFunction string, numPartitions int, //TODO should numPartitions be numInstances?
     args []interface{}) {
     // assign partitions for every table
     // send config messages to workers
     // add # of kernelFunctions (I think this is partitions) to barrier.Add()
+    //        Is num partitions always num kernels?
     // dispatch kernelFunctions to workers (use Run RPC)
     // when kernelFunction returns/worker is done, call barrier.Done()
 

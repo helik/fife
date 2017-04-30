@@ -1,7 +1,16 @@
 package fife
 
-import ("labrpc"
-        "log"
+/*
+Worker set-up:
+1) CreateWorker is called by config, to create server and connect it to its peers and master
+2) Setup is called by application on each server, to initialize tables and deliver kernel func
+3) Config is called via RPC by fife master, to deliver data and table partition info
+4) Run is called by master to tell worker to start kernel function
+*/
+
+import (
+  "labrpc"
+  "log"
 )
 
 type Worker struct {
@@ -42,6 +51,12 @@ func (w *Worker) Kill(){
 //Called by RPC from fife master
 //Must be called before run
 func (w *Worker) Config(args *ConfigArgs, reply *ConfigReply) {
+  for tableName, item := range(args.PerTableData){
+    tmp := w.tables[tableName] //work around b/c cannot directly address fields of mapped objects
+    tmp.Store = item.Data //replace data in each table
+    tmp.PartitionMap = item.Partitions
+    w.tables[tableName] = tmp
+  }
   log.Printf("worker %v in config", w.me)
 }
 

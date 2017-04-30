@@ -1,5 +1,5 @@
 Test 1 -- check basic kernel function
-   -kernel function just prints it's kernel instance number
+   -kernel function just prints its kernel instance number
    -tests: machine setup, scheduling, run RPC, myInstance()
 
 Test 2 -- check table partition & setup

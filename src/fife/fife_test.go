@@ -31,8 +31,10 @@ func TestSetup(t *testing.T){
   if len(cfg.workers) != 2 {
     t.Fatalf("unexpected number of workers")
   }
+
   //shared kernel func between workers
-  kernMap := map[string]KernelFunction{"hello":kernel_simple}
+  kernName := "hello"
+  kernMap := map[string]KernelFunction{kernName:kernel_simple}
 
   //init workers
   for _, w := range(cfg.workers){
@@ -42,13 +44,24 @@ func TestSetup(t *testing.T){
   }
 
   //call an rpc from master
-  cfg.fife.ConfigWorkers()
+  ok := cfg.fife.ConfigWorkers()
+  if !ok{
+    t.Fatalf("Some config rpcs failed")
+  }
 
+  //run kernel functions
+  for i, w := range(cfg.workers){
+    args := &RunArgs{}
+    reply := &RunReply{}
+    args.Master = w.fife
+    args.KernelNumber = i
+    args.KernelFunctionName = kernName
+    w.Run(args, reply)
+  }
+  fmt.Println("...passed")
 }
 
-func TestRPCs(t *testing.T){
 
-}
 
 func kernel_simple(args []interface{}, tables map[string]Table){
   fmt.Println("hello, world")
