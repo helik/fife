@@ -135,7 +135,7 @@ func (f *Fife) partitionStore(name string, t Table){
   //iterate through all keys, re-partitioning
   for _, keyVal := range(t.Store){
     for key, val := range(keyVal){
-      partition := t.partitioner.which(key)
+      partition := t.partitioner.Which(key)
       newStore[partition][key] = val
     }
   }

@@ -22,8 +22,8 @@ type Table struct {
 
 //Tells us how to treat updates for a table item
 type Accumulator struct {
-    init        func(value interface{}) interface{}
-    accumulate  func(originalValue interface{}, newValue interface{}) interface{}
+    Init        func(value interface{}) interface{}
+    Accumulate  func(originalValue interface{}, newValue interface{}) interface{}
 }
 
 //Function mapping key to that key's data partition
@@ -31,7 +31,7 @@ type Accumulator struct {
 //because partitions 0 through npartitions - 1 are allocated in fife.partitionTables
 //Is that ok? Should we do a safety %nPartitions whenever someone calls which()?
 type Partitioner struct {
-    which func(key string) int
+    Which func(key string) int
 }
 
 //Return a table with initialized but empty data structures
@@ -91,18 +91,18 @@ func (t *Table) Update(key string, value interface{}) {
     if inLocal {
         originalValue, exists := localStore[key]
         if exists {
-            localStore[key] = t.accumulator.accumulate(originalValue, value)
+            localStore[key] = t.accumulator.Accumulate(originalValue, value)
         } else {
-            localStore[key] = t.accumulator.init(value)
+            localStore[key] = t.accumulator.Init(value)
         }
         return
     }
     // otherwise, buffer updates
     currentVal, inBuffer := t.updateBuffer[key]
     if inBuffer {
-        t.updateBuffer[key] = t.accumulator.accumulate(currentVal, value)
+        t.updateBuffer[key] = t.accumulator.Accumulate(currentVal, value)
     } else {
-        t.updateBuffer[key] = t.accumulator.init(value)
+        t.updateBuffer[key] = t.accumulator.Init(value)
     }
 }
 
@@ -121,8 +121,8 @@ func (t *Table) GetPartition(partition int) map[string]interface{} {
 }
 
 func (t *Table) getLocal(key string) (map[string]interface{}, bool) {
-    partition := t.partitioner.which(key)
-    if t.PartitionMap[partition] == myWorker().me {
+    partition := t.partitioner.Which(key)
+    if t.PartitionMap[partition] == t.myWorker.me {
         localStore := t.Store[partition]
         return localStore, true
     }
@@ -130,6 +130,6 @@ func (t *Table) getLocal(key string) (map[string]interface{}, bool) {
 }
 
 func (t *Table) sendRemoteTableOp(op Op, key string, value interface{}) TableOpReply {
-    remoteWorker := t.PartitionMap[t.partitioner.which(key)]
-    return myWorker().sendRemoteTableOp(remoteWorker, t.Name, op, key, value)
+    remoteWorker := t.PartitionMap[t.partitioner.Which(key)]
+    return t.myWorker.sendRemoteTableOp(remoteWorker, t.Name, op, key, value)
 }

@@ -21,11 +21,11 @@ type config struct {
 	mu        sync.Mutex
 	t         *testing.T
 	net       *labrpc.Network
-  nWorkers  int
+    nWorkers  int
 	n         int //total servers = nWorkers + 1
 	done      int32 // tell internal threads to die
-  workers   []*Worker //workers
-	fife      *Fife //leader
+    workers   []*Worker //workers
+	Fife      *Fife //leader
 	applyErr  []string // from apply channel readers
 	connected []bool   // whether each server is on the net
 	endnames  [][]string    // the port file names each sends to for workers talking to each other
@@ -33,12 +33,12 @@ type config struct {
 }
 
 //make a config with n workers and 1 leader fife
-func make_config(t *testing.T, n int) *config {
+func Make_config(t *testing.T, n int) *config {
 	runtime.GOMAXPROCS(4)
 	cfg := &config{}
 	cfg.t = t
 	cfg.net = labrpc.MakeNetwork()
-  cfg.nWorkers = n
+    cfg.nWorkers = n
 	cfg.n = n + 1
 	cfg.applyErr = make([]string, cfg.n)
 	cfg.workers = make([]*Worker, cfg.nWorkers)
@@ -52,7 +52,7 @@ func make_config(t *testing.T, n int) *config {
 	for i := 0; i < cfg.nWorkers; i++ {
 		cfg.start_worker(i)
 	}
-  cfg.start_fife()
+    cfg.start_fife()
 
 	// connect everyone
 	for i := 0; i < cfg.n; i++ {
@@ -124,7 +124,7 @@ func (cfg *config) start_fife() {
   fi := CreateFife(ends[:cfg.nWorkers]) //last thing in list is reference to ourself
 
 	cfg.mu.Lock()
-	cfg.fife = fi
+	cfg.Fife = fi
 	cfg.mu.Unlock()
 
 	svc := labrpc.MakeService(fi)
@@ -162,8 +162,8 @@ func (cfg *config) cleanup() {
 			cfg.workers[i].Kill()
 		}
 	}
-  if cfg.fife != nil {
-    cfg.fife.Kill()
+  if cfg.Fife != nil {
+    cfg.Fife.Kill()
   }
 	atomic.StoreInt32(&cfg.done, 1)
 }
