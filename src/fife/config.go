@@ -24,7 +24,7 @@ type config struct {
     nWorkers  int
 	n         int //total servers = nWorkers + 1
 	done      int32 // tell internal threads to die
-    workers   []*Worker //workers
+    Workers   []*Worker //workers
 	Fife      *Fife //leader
 	applyErr  []string // from apply channel readers
 	connected []bool   // whether each server is on the net
@@ -41,7 +41,7 @@ func Make_config(t *testing.T, n int) *config {
     cfg.nWorkers = n
 	cfg.n = n + 1
 	cfg.applyErr = make([]string, cfg.n)
-	cfg.workers = make([]*Worker, cfg.nWorkers)
+	cfg.Workers = make([]*Worker, cfg.nWorkers)
   //TODO do we need to init fife here?
 	cfg.connected = make([]bool, cfg.n)
 	cfg.endnames = make([][]string, cfg.n)
@@ -86,7 +86,7 @@ func (cfg *config) start_worker(i int) {
 	worker := CreateWorker(ends[cfg.n-1], ends[0:cfg.nWorkers], i) //last in ends is fife reference
 
 	cfg.mu.Lock()
-	cfg.workers[i] = worker
+	cfg.Workers[i] = worker
 	cfg.mu.Unlock()
 
 	svc := labrpc.MakeService(worker)
@@ -157,9 +157,9 @@ func (cfg *config) connect(i int) {
 }
 
 func (cfg *config) cleanup() {
-	for i := 0; i < len(cfg.workers); i++ {
-		if cfg.workers[i] != nil {
-			cfg.workers[i].Kill()
+	for i := 0; i < len(cfg.Workers); i++ {
+		if cfg.Workers[i] != nil {
+			cfg.Workers[i].Kill()
 		}
 	}
   if cfg.Fife != nil {

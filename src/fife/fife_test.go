@@ -14,14 +14,14 @@ var data map[string]interface{} = map[string]interface{}{"apple":1, "banana":100
 
 func TestConfig(t *testing.T){
   workers := 3
-  cfg := make_config(t, workers)
+  cfg := Make_config(t, workers)
   //check workers and fife
-  for _, w := range(cfg.workers) {
+  for _, w := range(cfg.Workers) {
     if w == nil {
       t.Fatalf("worker not created by config")
     }
   }
-  if cfg.fife == nil {
+  if cfg.Fife == nil {
     t.Fatalf("fife not created by config")
   }
   fmt.Println("...passed")
@@ -33,8 +33,8 @@ Workers should each print hello, world
 Note: worker run called by test, not rpc from fife
 */
 func TestSetup(t *testing.T){
-  cfg := make_config(t, 2) //config with 2 workers
-  if len(cfg.workers) != 2 {
+  cfg := Make_config(t, 2) //config with 2 workers
+  if len(cfg.Workers) != 2 {
     t.Fatalf("unexpected number of workers")
   }
 
@@ -43,20 +43,20 @@ func TestSetup(t *testing.T){
   kernMap := map[string]KernelFunction{kernName:kernel_simple}
 
   //init workers
-  for _, w := range(cfg.workers){
-    table := MakeTable(Accumulator{}, Partitioner{}, 0, name) //not using accumulator or partitioner for this test
-    w.Setup(kernMap, []Table{*table})
+  for _, w := range(cfg.Workers){
+    table := MakeTable(Accumulator{}, Partitioner{}, 0, name, false) //not using accumulator or partitioner for this test
+    w.Setup(kernMap, map[string]*Table{name:table})
     table.myWorker = w //irl, fife master will provide this
   }
 
   //call an rpc from master
-  ok := cfg.fife.configWorkers()
+  ok := cfg.Fife.configWorkers()
   if !ok{
     t.Fatalf("Some config rpcs failed")
   }
 
   //run kernel functions
-  for i, w := range(cfg.workers){
+  for i, w := range(cfg.Workers){
     args := &RunArgs{}
     reply := &RunReply{}
     args.Master = w.fife
@@ -68,7 +68,7 @@ func TestSetup(t *testing.T){
   fmt.Println("...passed")
 }
 
-func kernel_simple(args []interface{}, tables map[string]Table){
+func kernel_simple(args []interface{}, tables map[string]*Table){
   fmt.Printf("hello, world. Kernel %v\n", args[0])
 }
 
@@ -91,42 +91,42 @@ func partition_simple(key string) int{
 //Then, send those tables to workers using configWorkers.
 //Note that these last two steps are performed together during Run, just not testing run quite yet
 func TestFifeTable(t *testing.T){
-  cfg := make_config(t, 2) //config with 2 workers
+  cfg := Make_config(t, 2) //config with 2 workers
 
   tableName := "table1"
 
   //init workers
-  for _, w := range(cfg.workers){
-    table := MakeTable(Accumulator{}, Partitioner{partition_simple}, 4, tableName) //not using accumulator or partitioner for this test
-    w.Setup(make(map[string]KernelFunction), []Table{*table})
+  for _, w := range(cfg.Workers){
+    table := MakeTable(Accumulator{}, Partitioner{partition_simple}, 4, tableName, false) //not using accumulator or partitioner for this test
+    w.Setup(make(map[string]KernelFunction), map[string]*Table{tableName:table})
     table.myWorker = w //irl, fife master will provide this
   }
 
-  cfg.fife.CreateTable(4, Accumulator{}, Partitioner{partition_simple}, tableName, data)
+  cfg.Fife.CreateTable(4, Accumulator{}, Partitioner{partition_simple}, tableName, data, false)
 
-  if len(cfg.fife.tables[tableName].Store) != 4 {
+  if len(cfg.Fife.tables[tableName].Store) != 4 {
     t.Fatalf("Expected 4 partitions from simple_partition")
   }
-  if len(cfg.fife.tables[tableName].Store[0]) != 2 {
+  if len(cfg.Fife.tables[tableName].Store[0]) != 2 {
     t.Fatalf("Expected two \"a\" names to be partitioned together")
   }
 
-  cfg.fife.partitionTables()
-  if len(cfg.fife.tables[tableName].PartitionMap) != 4{
+  cfg.Fife.partitionTables()
+  if len(cfg.Fife.tables[tableName].PartitionMap) != 4{
     t.Fatalf("Expected 4 mapped partitions")
   }
-  for partition, worker := range(cfg.fife.tables[tableName].PartitionMap){
+  for partition, worker := range(cfg.Fife.tables[tableName].PartitionMap){
     if partition > 3 || worker > 1 {
       t.Fatalf("Expected largest partition 3 and largest worker 1")
     }
   }
 
-  ok := cfg.fife.configWorkers()
+  ok := cfg.Fife.configWorkers()
   if !ok{
     t.Fatalf("Some config rpcs failed")
   }
 
-  for _, w := range(cfg.workers){
+  for _, w := range(cfg.Workers){
     if len(w.tables[tableName].PartitionMap) != 4{
       t.Fatalf("Expected partition map to transfer from master to workers")
     }
