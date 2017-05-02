@@ -111,13 +111,12 @@ func (t *Table) Update(key string, value interface{}) {
     }
 }
 
-// flush updates on a single key to remote store
-func (t *Table) Flush(key string) {
-    // check if key is in buffer, if so send remote update
-    val, inBuffer := t.updateBuffer[key]
-    if inBuffer {
+// flush all buffered updates
+func (t *Table) Flush() {
+    for key, val := range t.updateBuffer {
         t.sendRemoteTableOp(UPDATE, key, val)
     }
+    t.updateBuffer = make(map[string]interface{})
 }
 
 // returns partition of the table's store that is the partition # of kernelFunction
