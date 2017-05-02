@@ -10,6 +10,7 @@ type Table struct {
     PartitionMap    map[int]int
 
     //private state
+    isMaster        bool
     myWorker        *Worker  //TODO might be better to put this in common.go?
     accumulator     Accumulator
     partitioner     Partitioner
@@ -22,8 +23,8 @@ type Table struct {
 
 //Tells us how to treat updates for a table item
 type Accumulator struct {
-    init        func(value interface{}) interface{}
-    accumulate  func(originalValue interface{}, newValue interface{}) interface{}
+    Init        func(value interface{}) interface{}
+    Accumulate  func(originalValue interface{}, newValue interface{}) interface{}
 }
 
 //Function mapping key to that key's data partition
@@ -31,22 +32,40 @@ type Accumulator struct {
 //because partitions 0 through npartitions - 1 are allocated in fife.partitionTables
 //Is that ok? Should we do a safety %nPartitions whenever someone calls which()?
 type Partitioner struct {
-    which func(key string) int
+    Which func(key string) int
 }
 
 //Return a table with initialized but empty data structures
 //Intended for use on table setup.
-func MakeTable(a Accumulator, p Partitioner, partitions int, name string) *Table {
+func MakeTable(a Accumulator, p Partitioner, partitions int, name string,
+    isMaster bool) *Table {
   t := &Table{}
   t.accumulator = a
   t.partitioner = p
   t.Name = name
   t.nPartitions = partitions
+  t.isMaster = isMaster
   //below will be filled in when fife starts using this table
   t.Store = make(map[int]map[string]interface{})
   t.PartitionMap = make(map[int]int)
   t.updateBuffer = make(map[string]interface{})
   return t
+}
+
+//initData in will be key/value pairs. We need to run partitioner on
+//all input data and assign it to our store map.
+// This is a lot of Puts, mimic being on master (aka everything is local)
+//   --> this should really only be called on the master anyways
+//        TODO: maybe restrict this to when isMaster is true?
+// TODO do we actually want to call update? or just overwrite anything that's there?
+func (t *Table) AddData(initData map[string]interface{}) {
+    //iterate through all keys, partitioning initData
+    savedIsMaster := t.isMaster
+    defer func(){t.isMaster = savedIsMaster}()
+    t.isMaster = true
+    for key, val := range initData {
+        t.Put(key, val)
+    }
 }
 
 func (t *Table) Contains(key string) bool {
@@ -78,8 +97,10 @@ func (t *Table) Get(key string) interface{} {
 func (t *Table) Put(key string, value interface{}) {
     // check if key is in local partition & proceed normally
     localStore, inLocal := t.getLocal(key)
+
     if inLocal {
         localStore[key] = value
+        return
     }
     // otherwise need to do a remote put
     t.sendRemoteTableOp(PUT, key, value)
@@ -91,28 +112,27 @@ func (t *Table) Update(key string, value interface{}) {
     if inLocal {
         originalValue, exists := localStore[key]
         if exists {
-            localStore[key] = t.accumulator.accumulate(originalValue, value)
+            localStore[key] = t.accumulator.Accumulate(originalValue, value)
         } else {
-            localStore[key] = t.accumulator.init(value)
+            localStore[key] = t.accumulator.Init(value)
         }
         return
     }
     // otherwise, buffer updates
     currentVal, inBuffer := t.updateBuffer[key]
     if inBuffer {
-        t.updateBuffer[key] = t.accumulator.accumulate(currentVal, value)
+        t.updateBuffer[key] = t.accumulator.Accumulate(currentVal, value)
     } else {
-        t.updateBuffer[key] = t.accumulator.init(value)
+        t.updateBuffer[key] = t.accumulator.Init(value)
     }
 }
 
-// flush updates on a single key to remote store
-func (t *Table) Flush(key string) {
-    // check if key is in buffer, if so send remote update
-    val, inBuffer := t.updateBuffer[key]
-    if inBuffer {
+// flush all buffered updates
+func (t *Table) Flush() {
+    for key, val := range t.updateBuffer {
         t.sendRemoteTableOp(UPDATE, key, val)
     }
+    t.updateBuffer = make(map[string]interface{})
 }
 
 // returns partition of the table's store that is the partition # of kernelFunction
@@ -121,15 +141,19 @@ func (t *Table) GetPartition(partition int) map[string]interface{} {
 }
 
 func (t *Table) getLocal(key string) (map[string]interface{}, bool) {
-    partition := t.partitioner.which(key)
-    if t.PartitionMap[partition] == myWorker().me {
-        localStore := t.Store[partition]
+    partition := t.partitioner.Which(key)
+    if t.isMaster || t.PartitionMap[partition] == t.myWorker.me {
+        localStore, ok := t.Store[partition]
+        if !ok || localStore == nil {
+            t.Store[partition] = make(map[string]interface{})
+            return t.Store[partition], true
+        }
         return localStore, true
     }
-    return make(map[string]interface{}), false
+    return nil, false
 }
 
 func (t *Table) sendRemoteTableOp(op Op, key string, value interface{}) TableOpReply {
-    remoteWorker := t.PartitionMap[t.partitioner.which(key)]
-    return myWorker().sendRemoteTableOp(remoteWorker, t.Name, op, key, value)
+    remoteWorker := t.PartitionMap[t.partitioner.Which(key)]
+    return t.myWorker.sendRemoteTableOp(remoteWorker, t.Name, op, key, value)
 }

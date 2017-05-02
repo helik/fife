@@ -17,7 +17,7 @@ type Worker struct {
     workers             []*labrpc.ClientEnd
     fife                *labrpc.ClientEnd //workers will also need to communicate with master fife
     kernelFunctions     map[string]KernelFunction
-    tables              map[string]Table
+    tables              map[string]*Table
     me                  int
 }
 
@@ -25,12 +25,9 @@ type Worker struct {
 //kernel functions and table accumulators and partitioners here, separately from creation
 //Tables here only need Accumulators
 func (w *Worker) Setup(kernelFunctions map[string]KernelFunction,
-    initialTables []Table) {
+    initialTables map[string]*Table) {
     w.kernelFunctions = kernelFunctions
-    w.tables = make(map[string]Table)
-    for _, table := range(initialTables) {
-      w.tables[table.Name] = table
-    }
+    w.tables = initialTables
 }
 
 //Called by the config file to create a worker server

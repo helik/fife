@@ -5,17 +5,12 @@ import (
 )
 
 //TODO should tables be an arg to kernel function?
-type KernelFunction func(args []interface{}, tables map[string]Table)
+type KernelFunction func(args []interface{}, tables map[string]*Table)
 
 var kernelInstance  int //Note: different from worker number
-var worker          *Worker
 
-func myInstance() int {
+func MyInstance() int {
     return kernelInstance
-}
-
-func myWorker() *Worker {
-    return worker
 }
 
 //The only data a table is ever passed from the fife master

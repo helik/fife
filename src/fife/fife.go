@@ -9,15 +9,15 @@ type Fife struct {
     rwmu        sync.RWMutex
     workers     []*labrpc.ClientEnd
     barrier     sync.WaitGroup
-    tables      map[string]Table //fife master knows all data for all tables
+    tables      map[string]*Table //fife master knows all data for all tables
 //TODO could include some "ready" bool that gets switched after Setup called and completed
     //tables
 }
 
 //test code provides fife with tables
 //TODO if we are providing all tables, what's the job of createtable?
-func (f *Fife) Setup(tables []Table) {
-
+func (f *Fife) Setup(tables map[string]*Table) {
+  f.tables = tables
 }
 
 //Config uses this to set up a fife instance on a server.
@@ -25,19 +25,8 @@ func (f *Fife) Setup(tables []Table) {
 func CreateFife(workers []*labrpc.ClientEnd) *Fife {
   fife := &Fife{}
   fife.workers = workers
-  fife.tables = make(map[string]Table)
+  fife.tables = make(map[string]*Table)
   return fife
-}
-
-func (f *Fife) CreateTable(partitions int, accumulator Accumulator,
-    partitioner Partitioner, name string, initData map[string]interface{}) *Table {
-    f.rwmu.Lock()
-    tbl := MakeTable(accumulator, partitioner, partitions, name)
-    tbl.Store = map[int]map[string]interface{}{1:initData}
-    f.tables[name] = *tbl
-    f.rwmu.Unlock()
-    f.partitionStore(name, *tbl)
-    return tbl
 }
 
 //done with this server
@@ -118,31 +107,6 @@ func (f *Fife) partitionTables(){
       t.PartitionMap[i] = worker
     }
   }
-}
-
-//Data as initially read in will be key/value pairs. We need to run partitioner on
-//all input data and assign it to our store map.
-//Assumes nothing about the initial partition values in f.tables.Store
-//Should be called once, after data and partitioner are set for all tables
-func (f *Fife) partitionStore(name string, t Table){
-  f.rwmu.Lock() //writing
-  defer f.rwmu.Unlock()
-  newStore := make(map[int]map[string]interface{})
-  //give new store maps for all partitions
-  for i := 0; i < t.nPartitions; i ++ {
-    newStore[i] = make(map[string]interface{})
-  }
-  //iterate through all keys, re-partitioning
-  for _, keyVal := range(t.Store){
-    for key, val := range(keyVal){
-      partition := t.partitioner.which(key)
-      newStore[partition][key] = val
-    }
-  }
-  //replace table store (cannot directly assign to field in map)
-  tmp := f.tables[name]
-  tmp.Store = newStore
-  f.tables[name] = tmp
 }
 
 // only makes sense to call after Run()
