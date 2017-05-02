@@ -6,7 +6,7 @@ import (
 
 // Control function
 func wordCount(f *fife.Fife, files map[string]string, numPartitions int) {
-    tables := initTables(f, numPartitions, true) // true for isMaster
+    tables := initTables(numPartitions, true) // true for isMaster
 
     for k,v := range files {
         tables["documents"].Put(k, makeDocValue(v))

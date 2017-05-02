@@ -17,7 +17,7 @@ func TestWordCount(t *testing.T) {
 
     // start workers
     for _, w := range(cfg.Workers) {
-        wordcount.StartWorker(w, cfg.Fife, numPartitions)
+        wordcount.StartWorker(w, numPartitions)
     }
 
     // start fife on master

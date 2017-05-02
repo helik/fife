@@ -52,6 +52,22 @@ func MakeTable(a Accumulator, p Partitioner, partitions int, name string,
   return t
 }
 
+//initData in will be key/value pairs. We need to run partitioner on
+//all input data and assign it to our store map.
+// This is a lot of Puts, mimic being on master (aka everything is local)
+//   --> this should really only be called on the master anyways
+//        TODO: maybe restrict this to when isMaster is true?
+// TODO do we actually want to call update? or just overwrite anything that's there?
+func (t *Table) AddData(initData map[string]interface{}) {
+    //iterate through all keys, partitioning initData
+    savedIsMaster := t.isMaster
+    defer func(){t.isMaster = savedIsMaster}()
+    t.isMaster = true
+    for key, val := range initData {
+        t.Put(key, val)
+    }
+}
+
 func (t *Table) Contains(key string) bool {
     // check if key is in local partition & proceed normally
     localStore, inLocal := t.getLocal(key)

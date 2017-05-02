@@ -102,7 +102,10 @@ func TestFifeTable(t *testing.T){
     table.myWorker = w //irl, fife master will provide this
   }
 
-  cfg.Fife.CreateTable(4, Accumulator{}, Partitioner{partition_simple}, tableName, data, false)
+  table := MakeTable(Accumulator{}, Partitioner{partition_simple}, 4, tableName, false)
+  table.AddData(data)
+
+  cfg.Fife.Setup(map[string]*Table{tableName:table})
 
   if len(cfg.Fife.tables[tableName].Store) != 4 {
     t.Fatalf("Expected 4 partitions from simple_partition")

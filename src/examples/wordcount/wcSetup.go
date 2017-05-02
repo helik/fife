@@ -5,20 +5,18 @@ import (
     "io/ioutil"
 )
 
-func initTables(f *fife.Fife, numPartitions int, isMaster bool) map[string]*fife.Table {
+func initTables(numPartitions int, isMaster bool) map[string]*fife.Table {
     partitioner := createHashedStringPartitioner(numPartitions)
 
-    documents := f.CreateTable(numPartitions, fife.Accumulator{}, 
-        partitioner, "documents", nil, isMaster)
+    documents := fife.MakeTable(fife.Accumulator{}, partitioner, numPartitions, 
+        "documents", isMaster)
 
-    words := f.CreateTable(numPartitions,
-        fife.Accumulator{
-            Init: func(value interface{}) interface{} {return value},
-            Accumulate: func(original interface{}, newVal interface{}) interface{} {
-                return makeIntValue(getIntValue(original) + getIntValue(newVal))
-                },
+    words := fife.MakeTable(fife.Accumulator{
+        Init: func(value interface{}) interface{} {return value},
+        Accumulate: func(original interface{}, newVal interface{}) interface{} {
+            return makeIntValue(getIntValue(original) + getIntValue(newVal))
             },
-        partitioner, "words", nil, isMaster)
+        }, partitioner, numPartitions, "words", isMaster)
 
     tables := make(map[string]*fife.Table)
     tables[documents.Name] = documents
@@ -27,10 +25,10 @@ func initTables(f *fife.Fife, numPartitions int, isMaster bool) map[string]*fife
     return tables
 }
 
-func StartWorker(w *fife.Worker, f *fife.Fife, numPartitions int) {
+func StartWorker(w *fife.Worker, numPartitions int) {
     kernelFunctions := map[string]fife.KernelFunction{"countWords":countWords}
 
-    tables := initTables(f, numPartitions, false)
+    tables := initTables(numPartitions, false)
 
     w.Setup(kernelFunctions, tables)
 }
