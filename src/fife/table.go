@@ -10,6 +10,7 @@ type Table struct {
     PartitionMap    map[int]int
 
     //private state
+    isMaster        bool
     myWorker        *Worker  //TODO might be better to put this in common.go?
     accumulator     Accumulator
     partitioner     Partitioner
@@ -36,12 +37,14 @@ type Partitioner struct {
 
 //Return a table with initialized but empty data structures
 //Intended for use on table setup.
-func MakeTable(a Accumulator, p Partitioner, partitions int, name string) *Table {
+func MakeTable(a Accumulator, p Partitioner, partitions int, name string,
+    isMaster bool) *Table {
   t := &Table{}
   t.accumulator = a
   t.partitioner = p
   t.Name = name
   t.nPartitions = partitions
+  t.isMaster = isMaster
   //below will be filled in when fife starts using this table
   t.Store = make(map[int]map[string]interface{})
   t.PartitionMap = make(map[int]int)
@@ -78,8 +81,10 @@ func (t *Table) Get(key string) interface{} {
 func (t *Table) Put(key string, value interface{}) {
     // check if key is in local partition & proceed normally
     localStore, inLocal := t.getLocal(key)
+
     if inLocal {
         localStore[key] = value
+        return
     }
     // otherwise need to do a remote put
     t.sendRemoteTableOp(PUT, key, value)
@@ -122,11 +127,15 @@ func (t *Table) GetPartition(partition int) map[string]interface{} {
 
 func (t *Table) getLocal(key string) (map[string]interface{}, bool) {
     partition := t.partitioner.Which(key)
-    if t.PartitionMap[partition] == t.myWorker.me {
-        localStore := t.Store[partition]
+    if t.isMaster || t.PartitionMap[partition] == t.myWorker.me {
+        localStore, ok := t.Store[partition]
+        if !ok || localStore == nil {
+            t.Store[partition] = make(map[string]interface{})
+            return t.Store[partition], true
+        }
         return localStore, true
     }
-    return make(map[string]interface{}), false
+    return nil, false
 }
 
 func (t *Table) sendRemoteTableOp(op Op, key string, value interface{}) TableOpReply {

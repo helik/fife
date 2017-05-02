@@ -30,9 +30,10 @@ func CreateFife(workers []*labrpc.ClientEnd) *Fife {
 }
 
 func (f *Fife) CreateTable(partitions int, accumulator Accumulator,
-    partitioner Partitioner, name string, initData map[string]interface{}) *Table {
+    partitioner Partitioner, name string, initData map[string]interface{},
+    isMaster bool) *Table {
     f.rwmu.Lock()
-    tbl := MakeTable(accumulator, partitioner, partitions, name)
+    tbl := MakeTable(accumulator, partitioner, partitions, name, isMaster)
     tbl.Store = map[int]map[string]interface{}{1:initData}
     f.tables[name] = *tbl
     f.rwmu.Unlock()
