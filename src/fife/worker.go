@@ -117,3 +117,7 @@ func (w *Worker) TableOpRPC(args *TableOpArgs, reply *TableOpReply) {
 
     reply.Done = true
 }
+
+func (w *Worker) CollectData(args *CollectDataArgs, reply *CollectDataReply) {
+    reply.TableData = w.tables[args.TableName].collectData()
+}

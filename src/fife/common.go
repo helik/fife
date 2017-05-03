@@ -48,6 +48,14 @@ type ConfigReply struct {
   Success            bool
 }
 
+type CollectDataArgs struct {
+    TableName   string
+}
+
+type CollectDataReply struct {
+    TableData   map[string]interface{}
+}
+
 //enum-like listing of possible states
 type Op int
 

@@ -126,7 +126,24 @@ func (f *Fife) partitionTables(){
 }
 
 // only makes sense to call after Run()
+// However, it will work no matter when you call it since if you call it before Run()
+//     it will automatically return since there is nothing in the wait group
 func (f *Fife) Barrier() {
     f.barrier.Wait()
     return
+}
+
+func (f *Fife) CollectData(tableName string) map[string]interface{} {
+  allData := make(map[string]interface{})
+  for w := range f.workers {
+    args := CollectDataArgs{tableName}
+    var reply CollectDataReply
+    
+    w.Call("Worker.CollectData", args, reply)
+
+    for k, v := range reply.TableData {
+      allData[k] = v
+    }
+  }
+  return allData
 }

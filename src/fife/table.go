@@ -157,3 +157,13 @@ func (t *Table) sendRemoteTableOp(op Op, key string, value interface{}) TableOpR
     remoteWorker := t.PartitionMap[t.partitioner.Which(key) % t.nPartitions]
     return t.myWorker.sendRemoteTableOp(remoteWorker, t.Name, op, key, value)
 }
+
+func (t *Table) collectData() map[string]interface{} {
+    allData := make(map[string]interface{})
+    for _, partitionStore := range t.Store {
+        for k,v := range partitionStore {
+            allData[k] = v
+        }
+    }
+    return allData
+}
