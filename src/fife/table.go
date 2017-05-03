@@ -141,7 +141,7 @@ func (t *Table) GetPartition(partition int) map[string]interface{} {
 }
 
 func (t *Table) getLocal(key string) (map[string]interface{}, bool) {
-    partition := t.partitioner.Which(key)
+    partition := t.partitioner.Which(key) % t.nPartitions
     if t.isMaster || t.PartitionMap[partition] == t.myWorker.me {
         localStore, ok := t.Store[partition]
         if !ok || localStore == nil {
@@ -154,6 +154,6 @@ func (t *Table) getLocal(key string) (map[string]interface{}, bool) {
 }
 
 func (t *Table) sendRemoteTableOp(op Op, key string, value interface{}) TableOpReply {
-    remoteWorker := t.PartitionMap[t.partitioner.Which(key)]
+    remoteWorker := t.PartitionMap[t.partitioner.Which(key) % t.nPartitions]
     return t.myWorker.sendRemoteTableOp(remoteWorker, t.Name, op, key, value)
 }
