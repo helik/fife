@@ -6,30 +6,6 @@ import (
     "math"
 )
 
-type IntValue struct {
-    value   int
-}
-
-func makeIntValue(val int) IntValue {
-    return IntValue{val}
-}
-
-func getIntValue(valObj interface{}) int {
-    return valObj.(IntValue).value
-}
-
-type DocValue struct {
-    value   string
-}
-
-func makeDocValue(val string) DocValue {
-    return DocValue{val}
-}
-
-func getDocValue(valObj interface{}) string {
-    return valObj.(DocValue).value
-}
-
 func abs(x uint32) int {
     return int(math.Abs(float64(int(x))))
 }

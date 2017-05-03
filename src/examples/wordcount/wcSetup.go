@@ -5,6 +5,17 @@ import (
     "io/ioutil"
 )
 
+func partition_simple(key string) int{
+  switch key[0]{
+  case 'a':
+    return 0
+  case 'b':
+    return 1
+  default:
+    return 2
+  }
+}
+
 func initTables(numPartitions int, isMaster bool) map[string]*fife.Table {
     partitioner := createHashedStringPartitioner(numPartitions)
 
@@ -14,7 +25,7 @@ func initTables(numPartitions int, isMaster bool) map[string]*fife.Table {
     words := fife.MakeTable(fife.Accumulator{
         Init: func(value interface{}) interface{} {return value},
         Accumulate: func(original interface{}, newVal interface{}) interface{} {
-            return makeIntValue(getIntValue(original) + getIntValue(newVal))
+            return original.(int) + newVal.(int)
             },
         }, partitioner, numPartitions, "words", isMaster)
 
@@ -22,11 +33,14 @@ func initTables(numPartitions int, isMaster bool) map[string]*fife.Table {
     tables[documents.Name] = documents
     tables[words.Name] = words
 
+    simple := fife.MakeTable(fife.Accumulator{}, fife.Partitioner{partition_simple}, numPartitions, "simple", isMaster)
+    tables[simple.Name] = simple
+
     return tables
 }
 
 func StartWorker(w *fife.Worker, numPartitions int) {
-    kernelFunctions := map[string]fife.KernelFunction{"countWords":countWords}
+    kernelFunctions := map[string]fife.KernelFunction{"countWords":CountWords}
 
     tables := initTables(numPartitions, false)
 
@@ -37,11 +51,11 @@ func StartFife(f *fife.Fife, numPartitions int) {
     // create test input
     fileContentsMap := make(map[string]string)
     // get which files to read
-    files, err := ioutil.ReadDir("data")
+    files, err := ioutil.ReadDir("smalldata")
     if err != nil { panic(err) }
     // read in input files
     for _, file := range files {
-        fileContents, err := ioutil.ReadFile("data/"+file.Name())
+        fileContents, err := ioutil.ReadFile("smalldata/"+file.Name())
         if err != nil { panic(err) }
         fileContentsMap[file.Name()] = string(fileContents)
     }

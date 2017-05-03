@@ -76,8 +76,7 @@ func (t *Table) Contains(key string) bool {
         return ok
     }
     // otherwise need to do a remote contains
-    var empty interface{}
-    reply := t.sendRemoteTableOp(CONTAINS, key, empty)
+    reply := t.sendRemoteTableOp(CONTAINS, key, nil)
     return reply.Contains
 }
 
@@ -89,8 +88,7 @@ func (t *Table) Get(key string) interface{} {
         return value
     }
     // otherwise need to do a remote get
-    var empty interface{}
-    reply := t.sendRemoteTableOp(GET, key, empty)
+    reply := t.sendRemoteTableOp(GET, key, nil)
     return reply.Get
 }
 
@@ -137,7 +135,17 @@ func (t *Table) Flush() {
 
 // returns partition of the table's store that is the partition # of kernelFunction
 func (t *Table) GetPartition(partition int) map[string]interface{} {
-    return t.Store[partition]
+    owner := t.PartitionMap[partition]
+    if owner == t.myWorker.me {
+        localStore, ok := t.Store[partition]
+        if !ok || localStore == nil {
+            t.Store[partition] = make(map[string]interface{})
+        }
+        return t.Store[partition]
+    }
+    reply := t.myWorker.sendRemoteTableOp(owner, t.Name, PARTITION,
+        "", nil, partition)
+    return reply.Partition
 }
 
 func (t *Table) getLocal(key string) (map[string]interface{}, bool) {
@@ -146,14 +154,23 @@ func (t *Table) getLocal(key string) (map[string]interface{}, bool) {
         localStore, ok := t.Store[partition]
         if !ok || localStore == nil {
             t.Store[partition] = make(map[string]interface{})
-            return t.Store[partition], true
         }
-        return localStore, true
+        return t.Store[partition], true
     }
     return nil, false
 }
 
 func (t *Table) sendRemoteTableOp(op Op, key string, value interface{}) TableOpReply {
     remoteWorker := t.PartitionMap[t.partitioner.Which(key) % t.nPartitions]
-    return t.myWorker.sendRemoteTableOp(remoteWorker, t.Name, op, key, value)
+    return t.myWorker.sendRemoteTableOp(remoteWorker, t.Name, op, key, value, -1)
+}
+
+func (t *Table) collectData() map[string]interface{} {
+    allData := make(map[string]interface{})
+    for _, partitionStore := range t.Store {
+        for k,v := range partitionStore {
+            allData[k] = v
+        }
+    }
+    return allData
 }

@@ -1,0 +1,6 @@
+goodbye:1
+hello:2
+merp:2
+there:1
+why:1
+world:2
