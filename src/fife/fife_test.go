@@ -159,4 +159,6 @@ func TestFifeRun(t *testing.T){
   cfg.Fife.Setup(map[string]*Table{tableName:table})
 
   cfg.Fife.Run("hello", 6, []interface{}{})
+
+  cfg.CheckDataStore()
 }

@@ -21,10 +21,10 @@ type config struct {
 	mu        sync.Mutex
 	t         *testing.T
 	net       *labrpc.Network
-    nWorkers  int
+  nWorkers  int
 	n         int //total servers = nWorkers + 1
 	done      int32 // tell internal threads to die
-    Workers   []*Worker //workers
+  Workers   []*Worker //workers
 	Fife      *Fife //leader
 	applyErr  []string // from apply channel readers
 	connected []bool   // whether each server is on the net
@@ -166,4 +166,26 @@ func (cfg *config) cleanup() {
     cfg.Fife.Kill()
   }
 	atomic.StoreInt32(&cfg.done, 1)
+}
+
+//fail the test if not all the master's data is replicated
+//on the fife workers, or if the partitions on workers
+//don't agree with what we were promised
+//Should be run after initial data loaded into master fife
+//and workers are configured, but before we run any kernels that would
+//change table state
+func (cfg *config) CheckDataStore() {
+  for tbl_name, table := range(cfg.Fife.tables){
+    for partition, worker := range(table.PartitionMap){
+      tbl, success := cfg.Workers[worker].tables[tbl_name]
+      if !success{
+        cfg.t.Fatalf("Worker did not contain expected table")
+      }
+      _, success = tbl.Store[partition]
+      if !success{
+        cfg.t.Fatalf("Worker table did not contain expected partition")
+      }
+    }
+  }
+
 }
