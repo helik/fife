@@ -68,7 +68,7 @@ func TestSetup(t *testing.T){
   fmt.Println("...passed")
 }
 
-func kernel_simple(args []interface{}, tables map[string]*Table){
+func kernel_simple(kernelInstance int, args []interface{}, tables map[string]*Table){
   fmt.Printf("hello, world.")
 }
 
