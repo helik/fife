@@ -12,12 +12,13 @@ func wordCount(f *fife.Fife, files map[string]string, numPartitions int) {
     tables := initTables(numPartitions, true) // true for isMaster
 
     for k,v := range files {
-        tables["documents"].Put(k, makeDocValue(v))
+        tables["documents"].Put(k, v)
     }
 
     f.Setup(tables)
 
-    f.Run("countWords", numPartitions, nil)
+    var args interface{}
+    f.Run("countWords", numPartitions, []interface{}{args})
 
     f.Barrier()
 
@@ -37,7 +38,7 @@ func wordCount(f *fife.Fife, files map[string]string, numPartitions int) {
     if err != nil { panic(err) }
 
     for _, k := range keys {
-        s := k + ":" + strconv.Itoa(getIntValue(data[k])) + "\n"
+        s := k + ":" + strconv.Itoa(int(data[k].(int))) + "\n"
         _, err = file.WriteString(s)
         if err != nil { panic(err) }
     }

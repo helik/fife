@@ -51,7 +51,6 @@ func (w *Worker) Kill(){
 //Called by RPC from fife master
 //Must be called before run
 func (w *Worker) Config(args *ConfigArgs, reply *ConfigReply) {
-  log.Println("Config",w.me,"args?",args)
   for tableName, item := range(args.PerTableData){
     tmp := w.tables[tableName] //work around b/c cannot directly address fields of mapped objects
     tmp.Store = item.Data //replace data in each table
@@ -64,12 +63,12 @@ func (w *Worker) Config(args *ConfigArgs, reply *ConfigReply) {
 //and put any reply info in RunReply.
 func (w *Worker) Run(args *RunArgs, reply *RunReply) {
     // set me to this kernel instance number to use in myInstance()
-    kernelInstance = args.KernelNumber
+    // kernelInstance = args.KernelNumber
     //TODO need to get table data and partition map from kernel before we start.
     //This happens in Config, but should we check that we're good to go? 
 
     // run kernel function
-    w.kernelFunctions[args.KernelFunctionName](args.KernelArgs, w.tables)
+    w.kernelFunctions[args.KernelFunctionName](args.KernelNumber, args.KernelArgs, w.tables)
 
     reply.Done = true
 }
@@ -81,24 +80,27 @@ type TableOpArgs struct {
     Op          Op
     Key         string
     Value       interface{}
+    Partition   int
 }
 
 type TableOpReply struct {
     Done        bool
     Contains    bool
     Get         interface{}
+    Partition   map[string]interface{}
 }
 
 func (w *Worker) sendRemoteTableOp(worker int, tableName string, operation Op,
-    key string, value interface{}) TableOpReply {
+    key string, value interface{}, partition int) TableOpReply {
     args := TableOpArgs{
         TableName: tableName,
         Op: operation,
         Key: key,
         Value: value,
+        Partition: partition,
     }
     var reply TableOpReply
-    ok := w.workers[worker].Call("Worker.TableOpRPC", args, reply)
+    ok := w.workers[worker].Call("Worker.TableOpRPC", &args, &reply)
     if !ok || !reply.Done {
         // TODO: retry if the rpc failed?
     }
@@ -117,6 +119,8 @@ func (w *Worker) TableOpRPC(args *TableOpArgs, reply *TableOpReply) {
         targetTable.Put(args.Key, args.Value)
     case UPDATE:
         targetTable.Update(args.Key, args.Value)
+    case PARTITION:
+        reply.Partition = targetTable.GetPartition(args.Partition)
     }
 
     reply.Done = true

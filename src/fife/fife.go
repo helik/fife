@@ -59,7 +59,6 @@ func (f *Fife) configWorkers() bool {
       args.PerTableData[name] = data
     }
     f.rwmu.RUnlock()
-    log.Println("configWorkers",workerNum,"args?",args)
     ok := w.Call("Worker.Config", args, reply)
     failure = failure || !ok
     if ! ok {

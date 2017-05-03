@@ -5,13 +5,13 @@ import (
 )
 
 //TODO should tables be an arg to kernel function?
-type KernelFunction func(args []interface{}, tables map[string]*Table)
+type KernelFunction func(kernelInstance int, args []interface{}, tables map[string]*Table)
 
-var kernelInstance  int //Note: different from worker number
+// var kernelInstance  int //Note: different from worker number
 
-func MyInstance() int {
-    return kernelInstance
-}
+// func MyInstance() int {
+//     return kernelInstance
+// }
 
 //The only data a table is ever passed from the fife master
 type TableData struct {
@@ -64,4 +64,5 @@ const (
 	GET
 	PUT
   UPDATE
+  PARTITION
 )

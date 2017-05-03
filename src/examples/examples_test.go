@@ -20,6 +20,6 @@ func TestWordCount(t *testing.T) {
         wordcount.StartWorker(w, numWorkers)
     }
 
-    // start fife on master
+    // // start fife on master
     wordcount.StartFife(cfg.Fife, numWorkers)
 }
