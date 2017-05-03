@@ -3,7 +3,6 @@ package fife
 import ("sync"
         "labrpc"
         "log"
-        "time"
  )
 
 type Fife struct {
@@ -98,7 +97,8 @@ func (f *Fife) Run(kernelFunction string, numInstances int, //TODO should numPar
     for i := 0; i < numInstances; i ++ { //TODO rewrite to handle crashes
       go func(i int){
         log.Printf("in fife run")
-        w := f.workers[<- freeWorkers] //block here till a free worker
+        w_num := <- freeWorkers
+        w := f.workers[w_num] //block here till a free worker
         rArgs := &RunArgs{}
         reply := &RunReply{}
         //args.Master =
@@ -106,9 +106,9 @@ func (f *Fife) Run(kernelFunction string, numInstances int, //TODO should numPar
         rArgs.KernelFunctionName = kernelFunction
         rArgs.KernelArgs = args
         w.Call("Worker.Run", rArgs, reply)
+        freeWorkers <-w_num
       }(i)
     }
-    time.Sleep(time.Second)
 }
 
 //For each table, match table partitions with workers

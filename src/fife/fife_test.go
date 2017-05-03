@@ -5,6 +5,7 @@ package fife
 import (
   "testing"
   "fmt"
+  "time"
 )
 
 const name string = "first_table"
@@ -140,7 +141,7 @@ func TestFifeTable(t *testing.T){
 }
 
 func TestFifeRun(t *testing.T){
-  cfg := Make_config(t, 2) //config with 2 workers
+  cfg := Make_config(t, 3) //config with 2 workers
 
   tableName := "table1"
 
@@ -159,5 +160,7 @@ func TestFifeRun(t *testing.T){
   cfg.Fife.Setup(map[string]*Table{tableName:table})
 
   cfg.Fife.Run("hello", 6, []interface{}{})
+
+  time.Sleep(time.Duration(10)*time.Second)
 
 }
