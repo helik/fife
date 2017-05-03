@@ -65,13 +65,3 @@ const (
 	PUT
   UPDATE
 )
-//
-// const (
-//     // op types
-//     CONTAINS = "Contains"
-//     GET      = "Get"
-//     PUT      = "Put"
-//     UPDATE   = "Update"
-// )
-//
-// type Op string

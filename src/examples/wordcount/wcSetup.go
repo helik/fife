@@ -37,11 +37,11 @@ func StartFife(f *fife.Fife, numPartitions int) {
     // create test input
     fileContentsMap := make(map[string]string)
     // get which files to read
-    files, err := ioutil.ReadDir("data")
+    files, err := ioutil.ReadDir("smalldata")
     if err != nil { panic(err) }
     // read in input files
     for _, file := range files {
-        fileContents, err := ioutil.ReadFile("data/"+file.Name())
+        fileContents, err := ioutil.ReadFile("smalldata/"+file.Name())
         if err != nil { panic(err) }
         fileContentsMap[file.Name()] = string(fileContents)
     }

@@ -59,6 +59,7 @@ func (f *Fife) configWorkers() bool {
       args.PerTableData[name] = data
     }
     f.rwmu.RUnlock()
+    log.Println("configWorkers",workerNum,"args?",args)
     ok := w.Call("Worker.Config", args, reply)
     failure = failure || !ok
     if ! ok {
@@ -106,6 +107,7 @@ func (f *Fife) Run(kernelFunction string, numInstances int, //TODO should numPar
         rArgs.KernelFunctionName = kernelFunction
         rArgs.KernelArgs = args
         w.Call("Worker.Run", rArgs, reply)
+        f.barrier.Done()
         freeWorkers <-w_num
       }(i)
     }
@@ -139,7 +141,7 @@ func (f *Fife) CollectData(tableName string) map[string]interface{} {
     args := CollectDataArgs{tableName}
     var reply CollectDataReply
     
-    w.Call("Worker.CollectData", args, reply)
+    w.Call("Worker.CollectData", &args, &reply)
 
     for k, v := range reply.TableData {
       allData[k] = v

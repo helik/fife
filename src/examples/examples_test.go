@@ -11,17 +11,15 @@ import (
 func TestWordCount(t *testing.T) {
     fmt.Println("TestWordCount")
 
-    numPartitions := 3
+    numWorkers := 3
 
-    cfg := fife.Make_config(t, numPartitions)
+    cfg := fife.Make_config(t, numWorkers)
 
     // start workers
     for _, w := range(cfg.Workers) {
-        wordcount.StartWorker(w, numPartitions)
+        wordcount.StartWorker(w, numWorkers)
     }
 
     // start fife on master
-    wordcount.StartFife(cfg.Fife, numPartitions)
-
-    // check output
+    wordcount.StartFife(cfg.Fife, numWorkers)
 }

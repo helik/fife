@@ -28,6 +28,9 @@ func (w *Worker) Setup(kernelFunctions map[string]KernelFunction,
     initialTables map[string]*Table) {
     w.kernelFunctions = kernelFunctions
     w.tables = initialTables
+    for tableName := range w.tables {
+        w.tables[tableName].myWorker = w
+    }
 }
 
 //Called by the config file to create a worker server
@@ -48,6 +51,7 @@ func (w *Worker) Kill(){
 //Called by RPC from fife master
 //Must be called before run
 func (w *Worker) Config(args *ConfigArgs, reply *ConfigReply) {
+  log.Println("Config",w.me,"args?",args)
   for tableName, item := range(args.PerTableData){
     tmp := w.tables[tableName] //work around b/c cannot directly address fields of mapped objects
     tmp.Store = item.Data //replace data in each table
