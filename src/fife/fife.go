@@ -135,7 +135,7 @@ func (f *Fife) Barrier() {
 
 func (f *Fife) CollectData(tableName string) map[string]interface{} {
   allData := make(map[string]interface{})
-  for w := range f.workers {
+  for _, w := range f.workers {
     args := CollectDataArgs{tableName}
     var reply CollectDataReply
     
