@@ -59,7 +59,7 @@ func TestSetup(t *testing.T){
   for i, w := range(cfg.Workers){
     args := &RunArgs{}
     reply := &RunReply{}
-    args.Master = w.fife
+    //args.Master = w.fife
     args.KernelNumber = i
     args.KernelFunctionName = kernName
     args.KernelArgs = []interface{}{i}
@@ -69,7 +69,7 @@ func TestSetup(t *testing.T){
 }
 
 func kernel_simple(args []interface{}, tables map[string]*Table){
-  fmt.Printf("hello, world. Kernel %v\n", args[0])
+  fmt.Printf("hello, world.")
 }
 
 func partition_simple(key string) int{
@@ -137,4 +137,27 @@ func TestFifeTable(t *testing.T){
   }
 
   fmt.Println("...passed")
+}
+
+func TestFifeRun(t *testing.T){
+  cfg := Make_config(t, 2) //config with 2 workers
+
+  tableName := "table1"
+
+  //init workers
+  kernName := "hello" //shared kernel func between workers
+  kernMap := map[string]KernelFunction{kernName:kernel_simple}
+  for _, w := range(cfg.Workers){
+    table := MakeTable(Accumulator{}, Partitioner{partition_simple}, 4, tableName, false) //not using accumulator or partitioner for this test
+    w.Setup(kernMap, map[string]*Table{tableName:table})
+    table.myWorker = w //irl, fife master will provide this
+  }
+
+  table := MakeTable(Accumulator{}, Partitioner{partition_simple}, 4, tableName, false)
+  table.AddData(data)
+
+  cfg.Fife.Setup(map[string]*Table{tableName:table})
+
+  cfg.Fife.Run("hello", 6, []interface{}{})
+
 }

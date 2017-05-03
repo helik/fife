@@ -1,7 +1,7 @@
 package fife
 
 import (
-  "labrpc"
+  //"labrpc"
 )
 
 //TODO should tables be an arg to kernel function?
@@ -24,11 +24,11 @@ func MakeTableData() TableData{
   data := TableData{}
   data.Data = make(map[int]map[string]interface{})
   data.Partitions = make(map[int]int)
-  return data 
+  return data
 }
 
 type RunArgs struct {
-    Master                  *labrpc.ClientEnd
+    //Master                  *labrpc.ClientEnd //does this make more sense in config args?
     KernelNumber            int
     KernelFunctionName      string
     KernelArgs              []interface{}

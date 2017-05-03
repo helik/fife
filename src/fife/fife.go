@@ -3,6 +3,7 @@ package fife
 import ("sync"
         "labrpc"
         "log"
+        "time"
  )
 
 type Fife struct {
@@ -80,19 +81,34 @@ func (f *Fife) Run(kernelFunction string, numInstances int, //TODO should numPar
     // dispatch kernelFunctions to workers (use Run RPC)
     // when kernelFunction returns/worker is done, call barrier.Done()
 
-    f.partitionTables()
-    ok := f.configWorkers()
+    f.partitionTables() //partition tables among workers.
+    ok := f.configWorkers() //send all tables to workers
     if !ok{
       //TODO what should we do if some workers fail to configure?
+      //presumably, re-partition that data and send it to the remaining workers
     }
-
-    //now, start running
-    for _, w := range(f.workers){
-      go func(w *labrpc.ClientEnd){
-
-        log.Println(w)
-      }(w)
+    log.Printf("done partitioning and configing")
+    //now, start running. we have some num workers and numInstances to run
+    f.barrier.Add(numInstances)
+    freeWorkers := make(chan int, len(f.workers))
+    for w := range(f.workers){
+      freeWorkers <- w
     }
+    log.Println(numInstances)
+    for i := 0; i < numInstances; i ++ { //TODO rewrite to handle crashes
+      go func(i int){
+        log.Printf("in fife run")
+        w := f.workers[<- freeWorkers] //block here till a free worker
+        rArgs := &RunArgs{}
+        reply := &RunReply{}
+        //args.Master =
+        rArgs.KernelNumber = i
+        rArgs.KernelFunctionName = kernelFunction
+        rArgs.KernelArgs = args
+        w.Call("Worker.Run", rArgs, reply)
+      }(i)
+    }
+    time.Sleep(time.Second)
 }
 
 //For each table, match table partitions with workers

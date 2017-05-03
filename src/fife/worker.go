@@ -61,7 +61,8 @@ func (w *Worker) Config(args *ConfigArgs, reply *ConfigReply) {
 func (w *Worker) Run(args *RunArgs, reply *RunReply) {
     // set me to this kernel instance number to use in myInstance()
     kernelInstance = args.KernelNumber
-    //TODO need to get table data and partition map from kernel before we start
+    //TODO need to get table data and partition map from kernel before we start.
+    //This happens in Config, but should we check that we're good to go? 
 
     // run kernel function
     w.kernelFunctions[args.KernelFunctionName](args.KernelArgs, w.tables)
