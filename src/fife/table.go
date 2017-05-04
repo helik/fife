@@ -70,8 +70,6 @@ func (t *Table) Config(partitionMap map[int]int, store map[int]map[string]interf
 //        TODO: maybe restrict this to when isMaster is true?
 // TODO do we actually want to call update? or just overwrite anything that's there?
 func (t *Table) AddData(initData map[string]interface{}) {
-    t.rwmu.Lock()
-    defer t.rwmu.Unlock()
     //iterate through all keys, partitioning initData
     savedIsMaster := t.isMaster
     defer func(){t.isMaster = savedIsMaster}()
