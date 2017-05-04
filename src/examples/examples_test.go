@@ -3,7 +3,6 @@ package examples
 import (
     "testing"
     "fmt"
-
     "fife"
     "examples/wordcount"
 )
