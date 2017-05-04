@@ -18,7 +18,7 @@ func wordCount(f *fife.Fife, files map[string]string, numPartitions int) {
     f.Setup(tables)
 
     var args interface{}
-    f.Run("countWords", numPartitions, []interface{}{args}, fife.LocalityConstriant{fife.NONE,""})
+    f.Run("countWords", numPartitions, []interface{}{args})//, fife.LocalityConstriant{fife.NONE,""})
 
     f.Barrier()
 

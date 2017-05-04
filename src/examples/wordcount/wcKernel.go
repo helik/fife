@@ -7,12 +7,13 @@ import (
 )
 
 // Kernel function
-func CountWords(kernelInstance int, args []interface{}, tables map[string]*fife.Table) {
+func countWords(kernelInstance int, args []interface{}, tables map[string]*fife.Table) {
     documents := tables["documents"]
     words := tables["words"]
     isNotALetter := func(c rune) bool {
         return !unicode.IsLetter(c)
     }
+
     // look at all documents in this partition
     for _, doc := range documents.GetPartition(kernelInstance) {
         // for all the words in the document

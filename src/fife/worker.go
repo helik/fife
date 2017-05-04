@@ -52,10 +52,7 @@ func (w *Worker) Kill(){
 //Must be called before run
 func (w *Worker) Config(args *ConfigArgs, reply *ConfigReply) {
   for tableName, item := range(args.PerTableData){
-    tmp := w.tables[tableName] //work around b/c cannot directly address fields of mapped objects
-    tmp.Store = item.Data //replace data in each table
-    tmp.PartitionMap = item.Partitions
-    w.tables[tableName] = tmp
+    w.tables[tableName].Config(item.Partitions, item.Data)
   }
 }
 

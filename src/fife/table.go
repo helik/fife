@@ -1,5 +1,7 @@
 package fife
 
+import "sync"
+
 type Table struct {
     Name            string
     //We get Store and Partition map filled by master fife when it starts this kernel
@@ -16,6 +18,8 @@ type Table struct {
     partitioner     Partitioner
     nPartitions     int //The number of partitions,
                         //and the largest partition that the partitioner is allowed to return
+
+    rwmu              sync.RWMutex
 
     // updateBuffer maps key (string) to accumulated value to send in remote update
     updateBuffer    map[string]interface{}
@@ -52,6 +56,13 @@ func MakeTable(a Accumulator, p Partitioner, partitions int, name string,
   return t
 }
 
+func (t *Table) Config(partitionMap map[int]int, store map[int]map[string]interface{}) {
+    t.rwmu.Lock()
+    defer t.rwmu.Unlock()
+    t.PartitionMap = partitionMap
+    t.Store = store
+}
+
 //initData in will be key/value pairs. We need to run partitioner on
 //all input data and assign it to our store map.
 // This is a lot of Puts, mimic being on master (aka everything is local)
@@ -59,6 +70,8 @@ func MakeTable(a Accumulator, p Partitioner, partitions int, name string,
 //        TODO: maybe restrict this to when isMaster is true?
 // TODO do we actually want to call update? or just overwrite anything that's there?
 func (t *Table) AddData(initData map[string]interface{}) {
+    t.rwmu.Lock()
+    defer t.rwmu.Unlock()
     //iterate through all keys, partitioning initData
     savedIsMaster := t.isMaster
     defer func(){t.isMaster = savedIsMaster}()
@@ -71,7 +84,9 @@ func (t *Table) AddData(initData map[string]interface{}) {
 func (t *Table) Contains(key string) bool {
     // check if key is in local partition & proceed normally
     localStore, inLocal := t.getLocal(key)
-    if inLocal {
+    if inLocal {   
+        t.rwmu.RLock()
+        defer t.rwmu.RUnlock()
         _, ok := localStore[key]
         return ok
     }
@@ -84,6 +99,8 @@ func (t *Table) Get(key string) interface{} {
     // check if key is in local partition & proceed normally
     localStore, inLocal := t.getLocal(key)
     if inLocal {
+        t.rwmu.RLock()
+        defer t.rwmu.RUnlock()
         value := localStore[key]
         return value
     }
@@ -95,8 +112,9 @@ func (t *Table) Get(key string) interface{} {
 func (t *Table) Put(key string, value interface{}) {
     // check if key is in local partition & proceed normally
     localStore, inLocal := t.getLocal(key)
-
     if inLocal {
+        t.rwmu.Lock()
+        defer t.rwmu.Unlock()
         localStore[key] = value
         return
     }
@@ -105,6 +123,8 @@ func (t *Table) Put(key string, value interface{}) {
 }
 
 func (t *Table) Update(key string, value interface{}) {
+    t.rwmu.Lock()
+    defer t.rwmu.Unlock()
     // check if key is in local partition & proceed normally
     localStore, inLocal := t.getLocal(key)
     if inLocal {
@@ -127,16 +147,21 @@ func (t *Table) Update(key string, value interface{}) {
 
 // flush all buffered updates
 func (t *Table) Flush() {
-    for key, val := range t.updateBuffer {
+    t.rwmu.Lock()
+    localBuffer := t.updateBuffer
+    t.updateBuffer = make(map[string]interface{})
+    t.rwmu.Unlock()
+    for key, val := range localBuffer {
         t.sendRemoteTableOp(UPDATE, key, val)
     }
-    t.updateBuffer = make(map[string]interface{})
 }
 
 // returns partition of the table's store that is the partition # of kernelFunction
 func (t *Table) GetPartition(partition int) map[string]interface{} {
     owner := t.PartitionMap[partition]
     if owner == t.myWorker.me {
+        t.rwmu.RLock()
+        defer t.rwmu.RUnlock()
         localStore, ok := t.Store[partition]
         if !ok || localStore == nil {
             t.Store[partition] = make(map[string]interface{})
@@ -166,6 +191,8 @@ func (t *Table) sendRemoteTableOp(op Op, key string, value interface{}) TableOpR
 }
 
 func (t *Table) collectData() map[string]interface{} {
+    t.rwmu.RLock()
+    defer t.rwmu.RUnlock()
     allData := make(map[string]interface{})
     for _, partitionStore := range t.Store {
         for k,v := range partitionStore {
