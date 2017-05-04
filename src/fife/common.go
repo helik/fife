@@ -56,6 +56,19 @@ type CollectDataReply struct {
     TableData   map[string]interface{}
 }
 
+type LocalityConstriant struct {
+  Loc     Locality //type of locality
+  Table   string   //table on which to do locality constraint //TODO could do fancy stuff w/ 2 tables
+}
+
+//Types of locality specifications
+type Locality int
+
+const (
+	LOCALITY_REQ Locality = iota //all kernels must run on machine with same partition as kernel #
+  NONE 
+)
+
 //enum-like listing of possible states
 type Op int
 

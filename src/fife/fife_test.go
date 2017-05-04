@@ -69,7 +69,7 @@ func TestSetup(t *testing.T){
 }
 
 func kernel_simple(kernelInstance int, args []interface{}, tables map[string]*Table){
-  fmt.Printf("hello, world.")
+  fmt.Printf("hello, world. Kernel instance %v\n", kernelInstance)
 }
 
 func partition_simple(key string) int{
@@ -140,7 +140,7 @@ func TestFifeTable(t *testing.T){
 }
 
 func TestFifeRun(t *testing.T){
-  cfg := Make_config(t, 3) //config with 2 workers
+  cfg := Make_config(t, 3) //config with 3 workers
 
   tableName := "table1"
 
@@ -158,7 +158,13 @@ func TestFifeRun(t *testing.T){
 
   cfg.Fife.Setup(map[string]*Table{tableName:table})
 
-  cfg.Fife.Run("hello", 6, []interface{}{})
+  cfg.Fife.Run("hello", 6, []interface{}{}, LocalityConstriant{NONE, ""})
+
+  cfg.Fife.Barrier()
 
   cfg.CheckDataStore()
+}
+
+func TestLocality(){
+  
 }
