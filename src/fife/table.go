@@ -41,14 +41,15 @@ type Partitioner struct {
 
 //Return a table with initialized but empty data structures
 //Intended for use on table setup.
-func MakeTable(a Accumulator, p Partitioner, partitions int, name string,
-    isMaster bool) *Table {
+func MakeTable(name string, a Accumulator, p Partitioner, partitions int, 
+    worker *Worker) *Table {
   t := &Table{}
   t.accumulator = a
   t.partitioner = p
   t.Name = name
   t.nPartitions = partitions
-  t.isMaster = isMaster
+  t.isMaster = (worker == nil)
+  t.myWorker = worker
   //below will be filled in when fife starts using this table
   t.Store = make(map[int]map[string]interface{})
   t.PartitionMap = make(map[int]int)

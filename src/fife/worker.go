@@ -28,9 +28,6 @@ func (w *Worker) Setup(kernelFunctions map[string]KernelFunction,
     initialTables map[string]*Table) {
     w.kernelFunctions = kernelFunctions
     w.tables = initialTables
-    for tableName := range w.tables {
-        w.tables[tableName].myWorker = w
-    }
 }
 
 //Called by the config file to create a worker server
