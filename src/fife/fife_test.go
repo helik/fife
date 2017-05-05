@@ -44,9 +44,8 @@ func TestSetup(t *testing.T){
 
   //init workers
   for _, w := range(cfg.Workers){
-    table := MakeTable(Accumulator{}, Partitioner{}, 0, name, false) //not using accumulator or partitioner for this test
+    table := MakeTable(name, Accumulator{}, Partitioner{}, 0,w) //not using accumulator or partitioner for this test
     w.Setup(kernMap, map[string]*Table{name:table})
-    table.myWorker = w //irl, fife master will provide this
   }
 
   //call an rpc from master
@@ -101,12 +100,11 @@ func TestFifeTable(t *testing.T){
 
   //init workers
   for _, w := range(cfg.Workers){
-    table := MakeTable(Accumulator{}, Partitioner{partition_simple}, 4, tableName, false) //not using accumulator or partitioner for this test
+    table := MakeTable(tableName, Accumulator{}, Partitioner{partition_simple}, 4, w) //not using accumulator or partitioner for this test
     w.Setup(make(map[string]KernelFunction), map[string]*Table{tableName:table})
-    table.myWorker = w //irl, fife master will provide this
   }
 
-  table := MakeTable(Accumulator{}, Partitioner{partition_simple}, 4, tableName, false)
+  table := MakeTable(tableName, Accumulator{}, Partitioner{partition_simple}, 4, nil)
   table.AddData(data)
 
   cfg.Fife.Setup(map[string]*Table{tableName:table})
@@ -152,12 +150,11 @@ func TestFifeRun(t *testing.T){
   kernName := "hello" //shared kernel func between workers
   kernMap := map[string]KernelFunction{kernName:kernel_simple}
   for _, w := range(cfg.Workers){
-    table := MakeTable(Accumulator{}, Partitioner{partition_simple}, 4, tableName, false) //not using accumulator or partitioner for this test
+    table := MakeTable(tableName, Accumulator{}, Partitioner{partition_simple}, 4, w) //not using accumulator or partitioner for this test
     w.Setup(kernMap, map[string]*Table{tableName:table})
-    table.myWorker = w //irl, fife master will provide this
   }
 
-  table := MakeTable(Accumulator{}, Partitioner{partition_simple}, 4, tableName, false)
+  table := MakeTable(tableName, Accumulator{}, Partitioner{partition_simple}, 4, nil)
   table.AddData(data)
 
   cfg.Fife.Setup(map[string]*Table{tableName:table})
