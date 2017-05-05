@@ -175,12 +175,11 @@ func TestLocality(t *testing.T){
   kernName := "locality" //shared kernel func between workers
   kernMap := map[string]KernelFunction{kernName:kernel_locality}
   for _, w := range(cfg.Workers){
-    table := MakeTable(Accumulator{}, Partitioner{partition_simple}, 4, tableName, false) //not using accumulator or partitioner for this test
+    table := MakeTable(tableName, Accumulator{}, Partitioner{partition_simple}, 4, w) //not using accumulator or partitioner for this test
     w.Setup(kernMap, map[string]*Table{tableName:table})
-    table.myWorker = w //irl, fife master will provide this
   }
 
-  table := MakeTable(Accumulator{}, Partitioner{partition_simple}, 4, tableName, false)
+  table := MakeTable(tableName, Accumulator{}, Partitioner{partition_simple}, 4, nil)
   table.AddData(data)
 
   cfg.Fife.Setup(map[string]*Table{tableName:table})
