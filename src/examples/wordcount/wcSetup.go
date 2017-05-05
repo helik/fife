@@ -6,14 +6,16 @@ import (
 )
 
 func StartWorker(w *fife.Worker, numWorkers int) {
+    numPartitions := numWorkers*2
     kernelFunctions := map[string]fife.KernelFunction{"countWords":countWords}
 
-    tables := initTables(numWorkers*2, w)
+    tables := initTables(numPartitions, w)
 
     w.Setup(kernelFunctions, tables)
 }
 
 func StartFife(f *fife.Fife, numWorkers int) {
+    numPartitions := numWorkers*2
     // create test input
     fileContentsMap := make(map[string]string)
     // get which files to read
@@ -26,5 +28,5 @@ func StartFife(f *fife.Fife, numWorkers int) {
         fileContentsMap[file.Name()] = string(fileContents)
     }
 
-    wordCount(f, fileContentsMap, numWorkers*2)
+    wordCount(f, fileContentsMap, numPartitions)
 }

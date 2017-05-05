@@ -109,7 +109,7 @@ func (f *Fife) Run(kernelFunction string, numInstances int, //TODO should numPar
             }
           }
           //now, run all instances
-          for instance := range(myInstances){
+          for _, instance := range(myInstances){
             rArgs.KernelNumber = instance
             ok := worker.Call("Worker.Run", rArgs, reply)
             if ok {
