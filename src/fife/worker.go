@@ -10,7 +10,6 @@ Worker set-up:
 
 import (
   "labrpc"
-  "log"
 )
 
 type Worker struct {
@@ -35,7 +34,6 @@ func (w *Worker) Setup(kernelFunctions map[string]KernelFunction,
 
 //Called by the config file to create a worker server
 func CreateWorker(fife *labrpc.ClientEnd, workers []*labrpc.ClientEnd, me int) *Worker {
-  log.Printf("worker %v in worker.CreateWorker", me)
   worker := &Worker{}
   worker.fife = fife
   worker.workers = workers
@@ -65,7 +63,7 @@ func (w *Worker) Run(args *RunArgs, reply *RunReply) {
     // set me to this kernel instance number to use in myInstance()
     // kernelInstance = args.KernelNumber
     //TODO need to get table data and partition map from kernel before we start.
-    //This happens in Config, but should we check that we're good to go? 
+    //This happens in Config, but should we check that we're good to go?
 
     // run kernel function
     w.kernelFunctions[args.KernelFunctionName](args.KernelNumber, args.KernelArgs, w.tables)

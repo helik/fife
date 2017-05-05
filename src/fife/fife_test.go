@@ -72,6 +72,10 @@ func kernel_simple(kernelInstance int, args []interface{}, tables map[string]*Ta
   fmt.Printf("hello, world. Kernel instance %v\n", kernelInstance)
 }
 
+func kernel_locality(kernelInstance int, args []interface{}, tables map[string]*Table){
+  fmt.Printf("kernel %v. table store %v\n",kernelInstance, tables[name].Store)
+}
+
 func partition_simple(key string) int{
   switch key[0]{
   case 'a':
@@ -165,6 +169,29 @@ func TestFifeRun(t *testing.T){
   cfg.CheckDataStore()
 }
 
-func TestLocality(){
-  
+func TestLocality(t *testing.T){
+  cfg := Make_config(t, 4) //config with same # workers as # partitions
+
+  tableName := name
+
+  //init workers
+  kernName := "locality" //shared kernel func between workers
+  kernMap := map[string]KernelFunction{kernName:kernel_locality}
+  for _, w := range(cfg.Workers){
+    table := MakeTable(Accumulator{}, Partitioner{partition_simple}, 4, tableName, false) //not using accumulator or partitioner for this test
+    w.Setup(kernMap, map[string]*Table{tableName:table})
+    table.myWorker = w //irl, fife master will provide this
+  }
+
+  table := MakeTable(Accumulator{}, Partitioner{partition_simple}, 4, tableName, false)
+  table.AddData(data)
+
+  cfg.Fife.Setup(map[string]*Table{tableName:table})
+
+  fmt.Printf("Should print: \nKernel 0, a keys; kernel 1; b keys; kernel 3; c keys, kernel 3, others\n")
+  cfg.Fife.Run("locality", 4, []interface{}{}, LocalityConstriant{LOCALITY_REQ, tableName})
+
+  cfg.Fife.Barrier()
+
+  cfg.CheckDataStore()
 }
