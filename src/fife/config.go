@@ -185,6 +185,7 @@ func (cfg *config) CheckDataStore() {
       if !success{
         cfg.t.Fatalf("Worker table did not contain expected partition")
       }
+      //TODO could check entire data here, but that seems unnecicary 
     }
   }
 

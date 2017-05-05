@@ -71,7 +71,7 @@ func (f *Fife) configWorkers() bool {
 
 //Pass worker the string key to the function they should use
 func (f *Fife) Run(kernelFunction string, numInstances int, //TODO should numPartitions be numInstances?
-    args []interface{}) { //args is the args for the kernel function. tables passed separately
+    args []interface{}, loc LocalityConstriant) { //args is the args for the kernel function. tables passed separately
     // assign partitions for every table - means constructing the partition map for that table
     // send config messages to workers
     // wait for workers to reply successfully - if one worker is missing data, no workers can run
@@ -89,27 +89,73 @@ func (f *Fife) Run(kernelFunction string, numInstances int, //TODO should numPar
     log.Printf("done partitioning and configing")
     //now, start running. we have some num workers and numInstances to run
     f.barrier.Add(numInstances)
-    freeWorkers := make(chan int, len(f.workers))
-    for w := range(f.workers){
-      freeWorkers <- w
+    allInstances := make(chan int, numInstances) //Used in no locality situation
+    for i := 0; i < numInstances; i ++ {
+      allInstances <- i
     }
-    log.Println(numInstances)
-    for i := 0; i < numInstances; i ++ { //TODO rewrite to handle crashes
-      go func(i int){
-        log.Printf("in fife run")
-        w_num := <- freeWorkers
-        w := f.workers[w_num] //block here till a free worker
+    for w := range(f.workers){
+      go func(w int){
+        worker := f.workers[w]
         rArgs := &RunArgs{}
         reply := &RunReply{}
-        //args.Master =
-        rArgs.KernelNumber = i
         rArgs.KernelFunctionName = kernelFunction
         rArgs.KernelArgs = args
-        w.Call("Worker.Run", rArgs, reply)
-        f.barrier.Done()
-        freeWorkers <-w_num
-      }(i)
+        if loc.Loc == LOCALITY_REQ {
+          partitions := f.tables[loc.Table].PartitionMap
+          myInstances := []int{}
+          for partition, worker := range(partitions){
+            if worker == w{
+              myInstances = append(myInstances, partition)
+            }
+          }
+          //now, run all instances
+          for instance := range(myInstances){
+            rArgs.KernelNumber = instance
+            ok := worker.Call("Worker.Run", rArgs, reply)
+            if ok {
+              f.barrier.Done()
+            }else {
+              panic("failed worker.Run not impelemnted in fife run")
+            }
+          }
+        }else{ //we can run whichever instances need running
+          for {
+            instance, more := <- allInstances
+            if more { //something to run
+              rArgs.KernelNumber = instance
+              ok := worker.Call("Worker.Run", rArgs, reply)
+              if ok {
+                f.barrier.Done() //TODO do we want any other checks?
+              }
+            } else { //TODO this never happens right now, because chan is never closed
+              //could close from Barrier, but we'd need a reference to it 
+              return //chan has been closed, nothing else to run
+            }
+          }
+        }
+      }(w)
     }
+    // freeWorkers := make(chan int, len(f.workers))
+    // for w := range(f.workers){
+    //   freeWorkers <- w
+    // }
+    // log.Println(numInstances)
+    // for i := 0; i < numInstances; i ++ { //TODO rewrite to handle crashes
+    //   go func(i int){
+    //     log.Printf("in fife run")
+    //     w_num := <- freeWorkers
+    //     w := f.workers[w_num] //block here till a free worker
+    //     rArgs := &RunArgs{}
+    //     reply := &RunReply{}
+    //     //args.Master =
+    //     rArgs.KernelNumber = i
+    //     rArgs.KernelFunctionName = kernelFunction
+    //     rArgs.KernelArgs = args
+    //     w.Call("Worker.Run", rArgs, reply)
+    //     f.barrier.Done()
+    //     freeWorkers <-w_num
+    //   }(i)
+    // }
 }
 
 //For each table, match table partitions with workers
@@ -139,7 +185,7 @@ func (f *Fife) CollectData(tableName string) map[string]interface{} {
   for _, w := range f.workers {
     args := CollectDataArgs{tableName}
     var reply CollectDataReply
-    
+
     w.Call("Worker.CollectData", &args, &reply)
 
     for k, v := range reply.TableData {
