@@ -25,20 +25,6 @@ type Table struct {
     updateBuffer    map[string]interface{}
 }
 
-//Tells us how to treat updates for a table item
-type Accumulator struct {
-    Init        func(value interface{}) interface{}
-    Accumulate  func(originalValue interface{}, newValue interface{}) interface{}
-}
-
-//Function mapping key to that key's data partition
-//TODO Currently, we break if partitioner returns something larger than nPartitions - 1
-//because partitions 0 through npartitions - 1 are allocated in fife.partitionTables
-//Is that ok? Should we do a safety %nPartitions whenever someone calls which()?
-type Partitioner struct {
-    Which func(key string) int
-}
-
 //Return a table with initialized but empty data structures
 //Intended for use on table setup.
 func MakeTable(name string, a Accumulator, p Partitioner, partitions int, 
