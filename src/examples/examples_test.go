@@ -40,7 +40,8 @@ func TestWordCount(t *testing.T) {
 }
 
 func TestWebCrawler(t *testing.T) {
-    webcrawler.ReadPage("https://godoc.org/golang.org/x/net/html")
+    f :=  webcrawler.RealFetcher{}
+    f.Fetch("https://godoc.org/golang.org/x/net/html")
 }
 
 func TestPageRank(t *testing.T) {
