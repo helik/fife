@@ -4,9 +4,11 @@ package webcrawler
 // Fetcher
 // Used by kernel to get URLs. Has both a fake fetcher and a real.
 // Based off in-class
+//run go get to get the non-base library packages (html, robotstxt)
 //
 
 import (
+//  "github.com/temoto/robotstxt"
   "golang.org/x/net/html"
   "net/http"
   "fmt"
@@ -46,13 +48,12 @@ func (f RealFetcher) Fetch(url string) ([]string, error) {
       }
     }
   }
-  //TODO how to deal with err?
   fmt.Println(urls)
   return urls, err
 }
 
 //Return a list of dissalowed addresses in this domain
-func checkRobots(address string) []string {
+func (f RealFetcher) Robots(address string) []string {
   panic("check robots not implemented")
   return []string{""}
 }
