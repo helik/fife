@@ -16,6 +16,16 @@ type Fife struct {
 //test code provides fife with tables
 func (f *Fife) Setup(tables map[string]*Table) {
   f.tables = tables
+
+  // assign partitions for every table - means constructing the partition map for that table
+  // send config messages to workers
+  // wait for workers to reply successfully - if one worker is missing data, no workers can run
+  f.partitionTables() //partition tables among workers.
+  ok := f.configWorkers() //send all tables to workers
+  if !ok{
+    //TODO what should we do if some workers fail to configure?
+    //presumably, re-partition that data and send it to the remaining workers
+  }
 }
 
 //Config uses this to set up a fife instance on a server.
@@ -70,20 +80,11 @@ func (f *Fife) configWorkers() bool {
 //Pass worker the string key to the function they should use
 func (f *Fife) Run(kernelFunction string, numInstances int, //TODO should numPartitions be numInstances?
     args []interface{}, loc LocalityConstriant) { //args is the args for the kernel function. tables passed separately
-    // assign partitions for every table - means constructing the partition map for that table
-    // send config messages to workers
-    // wait for workers to reply successfully - if one worker is missing data, no workers can run
     // start a go thread to manage each worker
     // add # of kernelFunctions (numInstances)  to barrier.Add()
     // dispatch kernelFunctions to workers (use Run RPC)
     // when kernelFunction returns/worker is done, call barrier.Done()
 
-    f.partitionTables() //partition tables among workers.
-    ok := f.configWorkers() //send all tables to workers
-    if !ok{
-      //TODO what should we do if some workers fail to configure?
-      //presumably, re-partition that data and send it to the remaining workers
-    }
     //now, start running. we have some num workers and numInstances to run
     f.barrier.Add(numInstances)
     allInstances := make(chan int, numInstances) //Used in no locality situation
