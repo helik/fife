@@ -5,6 +5,7 @@ import (
     "fmt"
     "fife"
     "examples/wordcount"
+    "examples/webcrawler"
 )
 
 func TestWordCount(t *testing.T) {
@@ -21,4 +22,8 @@ func TestWordCount(t *testing.T) {
 
     // // start fife on master
     wordcount.StartFife(cfg.Fife, numWorkers)
+}
+
+func TestWebCrawler(t *testing.T) {
+    webcrawler.ReadPage("https://godoc.org/golang.org/x/net/html")
 }

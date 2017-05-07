@@ -14,7 +14,6 @@ type Fife struct {
 }
 
 //test code provides fife with tables
-//TODO if we are providing all tables, what's the job of createtable?
 func (f *Fife) Setup(tables map[string]*Table) {
   f.tables = tables
 }
