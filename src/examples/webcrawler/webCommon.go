@@ -20,7 +20,7 @@ func createHashedStringPartitioner(numPartitions int) fife.Partitioner {
 }
 
 //The accumulator for url_table takes the max of WebState
-func createStateAccumulator() fife.Accumulator {
+func createMaxAccumulator() fife.Accumulator {
   return fife.Accumulator{
     Init: func(value interface{}) interface{} {return value},
     Accumulate: func (initialValue interface{}, newValue interface{}) interface{} {
@@ -45,21 +45,19 @@ const (
 
 func initTables(numPartitions int, w *fife.Worker) map[string]*fife.Table {
     partitioner := createHashedStringPartitioner(numPartitions)
-    accumulator := createAccumulator()
+    accumulator := createMaxAccumulator()
 
     url_table := fife.MakeTable("url_table", accumulator, partitioner,
         numPartitions, w)
 
     politeness := fife.MakeTable("politeness", fife.Accumulator{
-        Init: func(value interface{}) interface{} {return value},
-        Accumulate: ,
         }, partitioner, numPartitions, w)
 
 
 
     tables := make(map[string]*fife.Table)
-    tables[documents.Name] = documents
-    tables[words.Name] = words
+    tables[url_table.Name] = url_table
+    tables[politeness.Name] = politeness
 
     return tables
 }
