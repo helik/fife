@@ -2,36 +2,7 @@ package webcrawler
 
 import (
   "fife"
-  "hash/fnv"
-  "math"
 )
-
-//Same partitioner as word count
-func abs(x uint32) int {
-    return int(math.Abs(float64(int(x))))
-}
-
-func createHashedStringPartitioner(numPartitions int) fife.Partitioner {
-    return fife.Partitioner{func(s string) int {
-        h := fnv.New32a()
-        h.Write([]byte(s))
-        return abs(h.Sum32()) % numPartitions
-    }}
-}
-
-//The accumulator for url_table takes the max of WebState
-func createMaxAccumulator() fife.Accumulator {
-  return fife.Accumulator{
-    Init: func(value interface{}) interface{} {return value},
-    Accumulate: func (initialValue interface{}, newValue interface{}) interface{} {
-      if initialValue.(WebState) < newValue.(WebState) {
-        return initialValue
-      }
-      return newValue
-    },
-  }
-}
-
 
 //possible statuses for web
 type WebState int
@@ -44,8 +15,10 @@ const (
 )
 
 func initTables(numPartitions int, w *fife.Worker) map[string]*fife.Table {
-    partitioner := createHashedStringPartitioner(numPartitions)
-    accumulator := createMaxAccumulator()
+    partitioner := fife.CreateHashedStringPartitioner(numPartitions)
+    accumulator := fife.CreateMaxAccumulator(func(a interface{}, b interface{}) bool{
+		     return a.(WebState) < b.(WebState)
+	  })
 
     url_table := fife.MakeTable("url_table", accumulator, partitioner,
         numPartitions, w)
