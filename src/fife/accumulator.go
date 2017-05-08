@@ -6,11 +6,13 @@ type Accumulator struct {
     Accumulate  func(originalValue interface{}, newValue interface{}) interface{}
 }
 
-var FSumAccumulator = Accumulator {
-    Init: func(value interface{}) interface{} { return value },
-    Accumulate: func(originalValue interface{}, newValue interface{}) interface{} {
-        return originalValue.(float64) + newValue.(float64)
-    },
+func CreateSumAccumulator(sum func(v1 interface{}, v2 interface{}) interface{}) Accumulator {
+    return Accumulator {
+        Init: func(value interface{}) interface{} { return value },
+        Accumulate: func(originalValue interface{}, newValue interface{}) interface{} {
+            return sum(originalValue, newValue)
+        },
+    }
 }
 
 //Just returns the first value, for when we don't care which of simultaneous updates

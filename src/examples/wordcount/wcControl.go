@@ -8,7 +8,7 @@ import (
 )
 
 // Control function
-func wordCount(f *fife.Fife, files map[string]string, numPartitions int) {
+func wordCount(f *fife.Fife, numPartitions int, files map[string]string) {
     tables := initTables(numPartitions, nil)
 
     for k,v := range files {
