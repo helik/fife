@@ -18,7 +18,7 @@ type Fetcher interface {
 	// Fetch returns the body of URL and
 	// a slice of URLs found on that page.
 	Fetch(url string) (urls []string, err error)
-  Robots(url string) ()
+//  Robots(url string) ()
 }
 
 //Implements fetcher interface with real data
@@ -28,8 +28,7 @@ type RealFetcher struct {
 
 //given the address of a page, read the page and parse its html for other web pages
 func (f RealFetcher) Fetch(url string) ([]string, error) {
-
-  resp, err := http.Get(url)
+  resp, err := http.Get(url) //TODO this can take a hella long time. Should we limit?
   urls := []string{}
 
   tokens := html.NewTokenizer(resp.Body)
