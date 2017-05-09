@@ -1,6 +1,7 @@
 package fife
 
-import ("sync"
+import (
+        "sync"
         "labrpc"
  )
 

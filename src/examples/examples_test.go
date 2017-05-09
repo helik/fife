@@ -69,7 +69,7 @@ func _TestWebCrawler(t *testing.T) { //not running this test right now with go t
     }
 
     // start fife on master
-    webcrawler.StartFife(cfg.Fife, numWorkers)
+    webcrawler.StartFife(cfg.Fife, "http://golang.org/", numWorkers)
 }
 
 func TestPageRankSimple(t *testing.T) {

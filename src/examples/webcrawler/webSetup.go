@@ -13,11 +13,8 @@ func StartWorker(w *fife.Worker, numWorkers int) {
     w.Setup(kernelFunctions, tables)
 }
 
-func StartFife(f *fife.Fife, numWorkers int) {
+func StartFife(f *fife.Fife, start_url string, numWorkers int) {
     numPartitions := numWorkers
-    tables := initTables(numPartitions, nil) //TODO these two lines are in the kernel
-                                             //function in the wc example. Should we standardize that?
-    f.Setup(tables)
 
-    webControl(f, numPartitions)
+    webControl(f, numPartitions, start_url)
 }

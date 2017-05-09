@@ -27,7 +27,7 @@ type Table struct {
 
 //Return a table with initialized but empty data structures
 //Intended for use on table setup.
-func MakeTable(name string, a Accumulator, p Partitioner, partitions int, 
+func MakeTable(name string, a Accumulator, p Partitioner, partitions int,
     worker *Worker) *Table {
   t := &Table{}
   t.accumulator = a
@@ -69,7 +69,7 @@ func (t *Table) AddData(initData map[string]interface{}) {
 func (t *Table) Contains(key string) bool {
     // check if key is in local partition & proceed normally
     localStore, inLocal := t.getLocal(key)
-    if inLocal {   
+    if inLocal {
         t.rwmu.RLock()
         defer t.rwmu.RUnlock()
         _, ok := localStore[key]

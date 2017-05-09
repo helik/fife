@@ -31,6 +31,17 @@ type Kernel struct {
 func fetcherThread(k *Kernel){
   for { //loop forever
     url := <- k.pool
+    new, err := k.fetch.Fetch(url)
+    if err != nil {
+      log.Printf("err\n")
+      continue //go to next url in pool TODO should we not try this one again?
+    }
+    for _, link := range(new){
+      k.tables[URL_TABLE].Update(link, TOFETCH)
+    }
+    k.tables[URL_TABLE].Update(url, DONE)
+    k.tables[URL_TABLE].Flush() //might have found work for other workers
+
     log.Printf(url)
   }
 }
@@ -51,18 +62,17 @@ func fetcherKernel(kernelInstance int, args []interface{}, tables map[string]*fi
   for i := 0; i < NUM_THREADS; i ++ {
     go fetcherThread(k)
   }
-  log.Printf("kernel instance %v started worker threads", kernelInstance)
 
   for { //we loop infinitely! TODO this will be hella sad irl.
     //should limit for testing purposes
-    for _, url := range url_table.GetPartition(kernelInstance) {
-        url_str := url.(string)
-        log.Printf("kernel instance %v found url %v", kernelInstance, url_str)
+    for url, _ := range url_table.GetPartition(kernelInstance) {
+        if url_table.Get(url) != TOFETCH {
+          continue
+        }
         //TODO check domain in robots table
         //TODO check domain in politeness table
-        url_table.Update(url_str, FETCHING)
-        k.pool <- url_str
-        log.Printf("kernel instance %v found url %v", kernelInstance, url_str)
+        url_table.Update(url, FETCHING)
+        k.pool <- url
     }
   }
 

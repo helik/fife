@@ -32,6 +32,7 @@ func initTables(numPartitions int, w *fife.Worker) map[string]*fife.Table {
         partitioner,
         numPartitions, w)
 
+    //politeness holds the time
     politeness := fife.MakeTable(POLITENESS,
       fife.CreateMaxAccumulator(func(a interface{}, b interface{}) bool{
         return a.(int) > b.(int)

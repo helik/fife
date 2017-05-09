@@ -46,6 +46,9 @@ func (w *Worker) Kill(){
 //Called by RPC from fife master
 //Must be called before run
 func (w *Worker) Config(args *ConfigArgs, reply *ConfigReply) {
+  // if args.PerTableData == nil { //no data was passed to us to configure
+  //   return
+  // }
   for tableName, item := range(args.PerTableData){
     w.tables[tableName].Config(item.Partitions, item.Data)
   }
