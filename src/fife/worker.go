@@ -93,6 +93,8 @@ func (w *Worker) PartitionUpdate(args *PartitionUpdateArgs, reply *Reply) {
     // if we are the new worker, we don't want to update our table until we are
     //   ready to switch -- add ourself to the updateAckTable & return
     if args.NewWorker == w.me {
+        w.mu.Lock()
+        defer w.mu.Unlock()
         update, inTable := w.partitionUpdateTable[args.UpdateNum]
         if inTable {
             workers := update.ackedWorkers
