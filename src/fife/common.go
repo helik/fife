@@ -27,6 +27,10 @@ func MakeTableData() TableData{
   return data
 }
 
+type Reply struct {
+  Done  bool
+}
+
 type RunArgs struct {
     //Master                  *labrpc.ClientEnd //does this make more sense in config args?
     KernelNumber            int
@@ -34,19 +38,17 @@ type RunArgs struct {
     KernelArgs              []interface{}
 }
 
-type RunReply struct {
-    Done    bool
-}
-
 //Config from fife master to workers
 type ConfigArgs struct {
   //data map: string table name to data for that table
   PerTableData       map[string]TableData
-  ConfigType         ConfigType
 }
 
-type ConfigReply struct {
-  Success            bool
+type PartitionUpdateArgs struct {
+  UpdateNum     int64
+  PartitionNum  int
+  OldWorker     int
+  NewWorker     int
 }
 
 type CollectDataArgs struct {
@@ -79,11 +81,4 @@ const (
 	PUT
   UPDATE
   PARTITION
-)
-
-type ConfigType int
-
-const (
-  RESET Op = iota
-  UPDATE_CONFIG
 )

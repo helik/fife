@@ -6,15 +6,6 @@ type Accumulator struct {
     Accumulate  func(originalValue interface{}, newValue interface{}) interface{}
 }
 
-func CreateSumAccumulator(sum func(v1 interface{}, v2 interface{}) interface{}) Accumulator {
-    return Accumulator {
-        Init: func(value interface{}) interface{} { return value },
-        Accumulate: func(originalValue interface{}, newValue interface{}) interface{} {
-            return sum(originalValue, newValue)
-        },
-    }
-}
-
 //Just returns the first value, for when we don't care which of simultaneous updates
 //is returned.
 var FirstAccumulator = Accumulator {
@@ -22,6 +13,15 @@ var FirstAccumulator = Accumulator {
     Accumulate: func(originalValue interface{}, newValue interface{}) interface{} {
         return originalValue
     },
+}
+
+func CreateSumAccumulator(sum func(v1 interface{}, v2 interface{}) interface{}) Accumulator {
+    return Accumulator {
+        Init: func(value interface{}) interface{} { return value },
+        Accumulate: func(originalValue interface{}, newValue interface{}) interface{} {
+            return sum(originalValue, newValue)
+        },
+    }
 }
 
 //Create an accumulator that returns the max of the inputs

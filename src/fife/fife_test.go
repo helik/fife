@@ -57,7 +57,7 @@ func TestSetup(t *testing.T){
   //run kernel functions
   for i, w := range(cfg.Workers){
     args := &RunArgs{}
-    reply := &RunReply{}
+    reply := &Reply{}
     //args.Master = w.fife
     args.KernelNumber = i
     args.KernelFunctionName = kernName

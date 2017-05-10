@@ -45,7 +45,7 @@ func (w *Worker) Kill(){
 
 //Called by RPC from fife master
 //Must be called before run
-func (w *Worker) Config(args *ConfigArgs, reply *ConfigReply) {
+func (w *Worker) Config(args *ConfigArgs, reply *Reply) {
   // if args.PerTableData == nil { //no data was passed to us to configure
   //   return
   // }
@@ -54,9 +54,13 @@ func (w *Worker) Config(args *ConfigArgs, reply *ConfigReply) {
   }
 }
 
+func (w *Worker) PartitionUpdate(args *PartitionUpdateArgs, reply *Reply) {
+
+}
+
 //we return to the master when our kernel function has finished,
 //and put any reply info in RunReply.
-func (w *Worker) Run(args *RunArgs, reply *RunReply) {
+func (w *Worker) Run(args *RunArgs, reply *Reply) {
     // set me to this kernel instance number to use in myInstance()
     // kernelInstance = args.KernelNumber
     //TODO need to get table data and partition map from kernel before we start.
