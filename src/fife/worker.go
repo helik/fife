@@ -10,6 +10,7 @@ Worker set-up:
 
 import (
   "labrpc"
+  "sync"
 )
 
 type Worker struct {
@@ -18,6 +19,16 @@ type Worker struct {
     kernelFunctions     map[string]KernelFunction
     tables              map[string]*Table
     me                  int
+
+    mu                  sync.Mutex
+
+    // map update num (int64) to a partition update struct
+    partitionUpdateTable        map[int64]*PartitionUpdate
+
+    // map partition num (int) to chan -- indicate on chan once this worker owns the partition num
+    waitingRemoteTableOps       map[int]chan bool
+
+    killChan        chan bool
 }
 
 //the test code or application will provide
@@ -35,12 +46,13 @@ func CreateWorker(fife *labrpc.ClientEnd, workers []*labrpc.ClientEnd, me int) *
   worker.fife = fife
   worker.workers = workers
   worker.me = me
+  worker.partitionUpdateTable = make(map[int64]*PartitionUpdate)
   return worker
 }
 
 //done with this server
 func (w *Worker) Kill(){
-
+    close(w.killChan)
 }
 
 //Called by RPC from fife master
@@ -50,12 +62,8 @@ func (w *Worker) Config(args *ConfigArgs, reply *Reply) {
   //   return
   // }
   for tableName, item := range(args.PerTableData){
-    w.tables[tableName].Config(item.Partitions, item.Data)
+    w.tables[tableName].config(item.Partitions, item.Data)
   }
-}
-
-func (w *Worker) PartitionUpdate(args *PartitionUpdateArgs, reply *Reply) {
-
 }
 
 //we return to the master when our kernel function has finished,
@@ -70,6 +78,113 @@ func (w *Worker) Run(args *RunArgs, reply *Reply) {
     w.kernelFunctions[args.KernelFunctionName](args.KernelNumber, args.KernelArgs, w.tables)
 
     reply.Done = true
+}
+
+// Partition Update
+
+type PartitionUpdate struct {
+    ackedWorkers    []int
+    partitionNum    int
+    // map of table name (string) to store data map[string]interface{}
+    partitionData   map[string]map[string]interface{}
+}
+
+func (w *Worker) PartitionUpdate(args *PartitionUpdateArgs, reply *Reply) {
+    // if we are the new worker, we don't want to update our table until we are
+    //   ready to switch -- add ourself to the updateAckTable & return
+    if args.NewWorker == w.me {
+        update, inTable := w.partitionUpdateTable[args.UpdateNum]
+        if inTable {
+            workers := update.ackedWorkers
+            for _, worker := range workers {
+                if worker == w.me { return }
+            }
+            update.partitionNum = args.PartitionNum
+            update.ackedWorkers = append(workers, w.me)
+        } else {
+            w.partitionUpdateTable[args.UpdateNum] = &PartitionUpdate {
+                ackedWorkers: []int{w.me},
+                partitionNum: args.PartitionNum,
+            }
+        }
+        return
+    }
+
+    // update partition maps
+    for _, table := range w.tables {
+        table.partitionUpdate(args.PartitionNum, args.NewWorker, nil)
+    }
+
+    var partitionData map[string]map[string]interface{}
+
+    // if we are the old worker, send along the data
+    if args.OldWorker == w.me {
+        partitionData = make(map[string]map[string]interface{})
+        for tableName, table := range w.tables {
+            partitionData[tableName] = table.getPartitionAndDelete(args.PartitionNum)
+        }
+    }
+
+    // tell the new worker we are ready to switch
+    go w.sendPartitionUpdateAck(args.NewWorker, args.UpdateNum, args.PartitionNum,
+        partitionData)
+}
+
+type PartitionUpdateAckArgs struct {
+    UpdateNum       int64
+    PartitionNum    int
+    WorkerNum       int
+    // map of table name (string) to store data map[string]interface{}
+    PartitionData   map[string]map[string]interface{}
+}
+
+func (w *Worker) sendPartitionUpdateAck(newWorker int, updateNum int64, partitionNum int,
+    partitionData map[string]map[string]interface{}) {
+    args := PartitionUpdateAckArgs{updateNum, partitionNum, w.me, partitionData}
+    w.workers[newWorker].Call("Worker.PartitionUpdateAck", &args, nil)
+}
+
+// RPC handler for partition update acks from other workers
+// this worker must be the target for the partition move & should wait until everyone
+// has responded before switching to owning the partition
+func (w * Worker) PartitionUpdateAck(args *PartitionUpdateAckArgs, reply *Reply) {
+    w.mu.Lock()
+    defer w.mu.Unlock()
+
+    update, inTable := w.partitionUpdateTable[args.UpdateNum]
+    // make sure this worker is not already in the list (to avoid duplicates)
+    var workers []int
+    if inTable {
+        workers = update.ackedWorkers
+        for _, w := range workers {
+            if w == args.WorkerNum { return }
+        }
+    } else {
+        w.partitionUpdateTable[args.UpdateNum] = &PartitionUpdate{}
+    }
+    // if not duplicate, add to table
+    w.partitionUpdateTable[args.UpdateNum].ackedWorkers = append(workers, args.WorkerNum)
+
+    // if old worker, save the partition data
+    if args.PartitionData != nil {
+        w.partitionUpdateTable[args.UpdateNum].partitionData = args.PartitionData
+    }
+
+    // check to see if we have all of the updates
+    //   (the +1 is for the new worker we just added)
+    if len(workers) + 1 == len(w.workers) {
+        // spawn a go routine to not block the caller
+        go func(){
+            // add new partition to tables
+            for tableName, table := range w.tables {
+                table.partitionUpdate(args.PartitionNum, w.me,
+                    w.partitionUpdateTable[args.UpdateNum].partitionData[tableName])
+            }
+            // unblock remote ops
+            w.waitingRemoteTableOps[args.PartitionNum] = make(chan bool)
+            close(w.waitingRemoteTableOps[args.PartitionNum])
+        }()
+    }
 }
 
 // Worker RPC calls to remote tables
@@ -108,6 +223,20 @@ func (w *Worker) sendRemoteTableOp(worker int, tableName string, operation Op,
 
 func (w *Worker) TableOpRPC(args *TableOpArgs, reply *TableOpReply) {
     targetTable := w.tables[args.TableName]
+
+    // if this worker doesn't have the partition asked for, assume we need to block
+    if !targetTable.isLocalPartition(args.Partition) {
+        // wait until worker gets this partition
+        _, exists := w.waitingRemoteTableOps[args.Partition]
+        if !exists {
+            w.waitingRemoteTableOps[args.Partition] = make(chan bool)
+        }
+        select {
+        case <- w.killChan:
+            return
+        case <- w.waitingRemoteTableOps[args.Partition]:
+        }
+    }
 
     switch args.Op {
     case CONTAINS:

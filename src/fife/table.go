@@ -43,11 +43,22 @@ func MakeTable(name string, a Accumulator, p Partitioner, partitions int,
   return t
 }
 
-func (t *Table) Config(partitionMap map[int]int, store map[int]map[string]interface{}) {
+func (t *Table) config(partitionMap map[int]int, store map[int]map[string]interface{}) {
     t.rwmu.Lock()
     defer t.rwmu.Unlock()
     t.PartitionMap = partitionMap
     t.Store = store
+}
+
+func (t *Table) partitionUpdate(partitionNum int, newWorkerNum int, 
+    newPartitionData map[string]interface{}) {
+    t.rwmu.Lock()
+    defer t.rwmu.Unlock()
+    t.PartitionMap[partitionNum] = newWorkerNum
+
+    if newPartitionData != nil {
+        t.Store[partitionNum] = newPartitionData
+    }
 }
 
 //initData in will be key/value pairs. We need to run partitioner on
@@ -158,6 +169,18 @@ func (t *Table) GetPartition(partition int) map[string]interface{} {
     return reply.Partition
 }
 
+func (t *Table) getPartitionAndDelete(partition int) map[string]interface{} {
+    localStore := t.Store[partition]
+
+    delete(t.Store, partition)
+
+    return localStore
+}
+
+func (t *Table) isLocalPartition(partition int) bool {
+    return t.PartitionMap[partition] == t.myWorker.me
+}
+
 func (t *Table) getLocal(key string) (map[string]interface{}, bool) {
     partition := t.partitioner.Which(key) % t.nPartitions
     if t.isMaster || t.PartitionMap[partition] == t.myWorker.me {
@@ -171,8 +194,9 @@ func (t *Table) getLocal(key string) (map[string]interface{}, bool) {
 }
 
 func (t *Table) sendRemoteTableOp(op Op, key string, value interface{}) TableOpReply {
-    remoteWorker := t.PartitionMap[t.partitioner.Which(key) % t.nPartitions]
-    return t.myWorker.sendRemoteTableOp(remoteWorker, t.Name, op, key, value, -1)
+    partition := t.partitioner.Which(key) % t.nPartitions
+    remoteWorker := t.PartitionMap[partition]
+    return t.myWorker.sendRemoteTableOp(remoteWorker, t.Name, op, key, value, partition)
 }
 
 func (t *Table) collectData() map[string]interface{} {
