@@ -42,6 +42,7 @@ type RunReply struct {
 type ConfigArgs struct {
   //data map: string table name to data for that table
   PerTableData       map[string]TableData
+  ConfigType         ConfigType
 }
 
 type ConfigReply struct {
@@ -66,7 +67,7 @@ type Locality int
 
 const (
 	LOCALITY_REQ Locality = iota //all kernels must run on machine with same partition as kernel #
-  NONE 
+  NONE
 )
 
 //enum-like listing of possible states
@@ -78,4 +79,11 @@ const (
 	PUT
   UPDATE
   PARTITION
+)
+
+type ConfigType int
+
+const (
+  RESET Op = iota
+  UPDATE_CONFIG
 )
