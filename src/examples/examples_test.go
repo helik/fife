@@ -54,11 +54,16 @@ func TestWordCount(t *testing.T) {
     fmt.Println("...passed")
 }
 
-func _TestWebCrawler(t *testing.T) { //not running this test right now with go test, b/c doesn't finish
-  //tests for fetcher
-    // f :=  webcrawler.RealFetcher{}
-    // f.Fetch("https://godoc.org/golang.org/x/net/html")
+//This web crawler uses a fake fetcher, so it doesn't require internet access to run test.
+//There is also a real fetcher in fetcher.go.
+func TestWebCrawler(t *testing.T) {
 
+    fmt.Println("TestWebCrawler")
+  //tests for fetcher
+    //  f :=  webcrawler.RealFetcher{}
+    //  ff := webcrawler.fakeFetcher
+    // f.Fetch("https://godoc.org/golang.org/x/net/html")
+    // f.Robots("https://godoc.org/golang.org/x/net/html")
 
     numWorkers := 3
     cfg := fife.Make_config(t, numWorkers)
@@ -68,8 +73,22 @@ func _TestWebCrawler(t *testing.T) { //not running this test right now with go t
         webcrawler.StartWorker(w, numWorkers)
     }
 
-    // start fife on master
+    os.Remove("results/web.txt")
+
+    // start fife on master. Provide seed URL.
     webcrawler.StartFife(cfg.Fife, "http://golang.org/", numWorkers)
+
+    // check and make sure that the results were correct
+    ref, err := ioutil.ReadFile("results/web-ref.txt")
+    if err != nil { panic(err) }
+
+    actual, err := ioutil.ReadFile("results/web.txt")
+    if err != nil { panic(err) }
+
+    if string(ref) != string(actual) {
+        t.Fatalf("incorrect web crawler results")
+    }
+    fmt.Println("...passed")
 }
 
 func TestPageRankSimple(t *testing.T) {

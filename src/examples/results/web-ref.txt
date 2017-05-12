@@ -1,0 +1,5 @@
+http://golang.org/
+http://golang.org/cmd/
+http://golang.org/pkg/
+http://golang.org/pkg/fmt/
+http://golang.org/pkg/os/
