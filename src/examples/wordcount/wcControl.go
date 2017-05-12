@@ -19,7 +19,7 @@ func wordCount(f *fife.Fife, numPartitions int, files map[string]string) {
 
     numKernels := numPartitions
 
-    f.Run("countWords", numKernels, []interface{}{}, 
+    f.Run("countWords", numKernels, []interface{}{},
         fife.LocalityConstriant{fife.LOCALITY_REQ,"documents"})
 
     f.Barrier()

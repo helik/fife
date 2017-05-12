@@ -2,7 +2,6 @@ package webcrawler
 
 import (
   "fife"
-  "log"
 )
 
 /*
@@ -15,6 +14,8 @@ as reference for parsing html for addresses,
 and http://www.robotstxt.org/robotstxt.html
 as a reference for handling robots.txt files
 */
+
+const TESTING bool = true
 
 //How many worker threads each kernel will run
 const NUM_THREADS int = 2
@@ -33,8 +34,7 @@ func fetcherThread(k *Kernel){
     url := <- k.pool
     new, err := k.fetch.Fetch(url)
     if err != nil {
-      log.Printf("err\n")
-      continue //go to next url in pool TODO should we not try this one again?
+      continue //go to next url in pool
     }
     for _, link := range(new){
       k.tables[URL_TABLE].Update(link, TOFETCH)
@@ -42,7 +42,6 @@ func fetcherThread(k *Kernel){
     k.tables[URL_TABLE].Update(url, DONE)
     k.tables[URL_TABLE].Flush() //might have found work for other workers
 
-    log.Printf(url)
   }
 }
 
@@ -54,17 +53,21 @@ func fetcherKernel(kernelInstance int, args []interface{}, tables map[string]*fi
   k.pool = make(chan string)
   k.tables = tables
 
-//  politeness := tables[POLITENESS]
   url_table := tables[URL_TABLE]
-//  robots := tables[ROBOTS]
 
   //start worker threads
   for i := 0; i < NUM_THREADS; i ++ {
     go fetcherThread(k)
   }
 
-  for { //we loop infinitely! TODO this will be hella sad irl.
-    //should limit for testing purposes
+  n := 0
+
+  for { //we loop infinitely!
+    //for testing, we limit to 100 runs
+    n ++
+    if TESTING && n > 10 {
+      break
+    }
     for url, _ := range url_table.GetPartition(kernelInstance) {
         if url_table.Get(url) != TOFETCH {
           continue
@@ -76,6 +79,4 @@ func fetcherKernel(kernelInstance int, args []interface{}, tables map[string]*fi
     }
   }
 
-
-  url_table.Flush() //TODO where should we flush? inside for loop?
 }
