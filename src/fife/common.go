@@ -59,6 +59,11 @@ type CollectDataReply struct {
     TableData   map[string]interface{}
 }
 
+type UpdateOp struct {
+    Key         string
+    Value       interface{}
+}
+
 type LocalityConstriant struct {
   Loc     Locality //type of locality
   Table   string   //table on which to do locality constraint //TODO could do fancy stuff w/ 2 tables
@@ -81,4 +86,5 @@ const (
 	PUT
   UPDATE
   PARTITION
+  UPDATELIST
 )

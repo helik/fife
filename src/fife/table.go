@@ -78,42 +78,45 @@ func (t *Table) AddData(initData map[string]interface{}) {
 }
 
 func (t *Table) Contains(key string) bool {
+    t.rwmu.RLock()
     // check if key is in local partition & proceed normally
     localStore, inLocal := t.getLocal(key)
     if inLocal {
-        t.rwmu.RLock()
         defer t.rwmu.RUnlock()
         _, ok := localStore[key]
         return ok
     }
+    t.rwmu.RUnlock()
     // otherwise need to do a remote contains
     reply := t.sendRemoteTableOp(CONTAINS, key, nil)
     return reply.Contains
 }
 
 func (t *Table) Get(key string) interface{} {
+    t.rwmu.RLock()
     // check if key is in local partition & proceed normally
     localStore, inLocal := t.getLocal(key)
     if inLocal {
-        t.rwmu.RLock()
         defer t.rwmu.RUnlock()
         value := localStore[key]
         return value
     }
+    t.rwmu.RUnlock()
     // otherwise need to do a remote get
     reply := t.sendRemoteTableOp(GET, key, nil)
     return reply.Get
 }
 
 func (t *Table) Put(key string, value interface{}) {
+    t.rwmu.Lock()
     // check if key is in local partition & proceed normally
     localStore, inLocal := t.getLocal(key)
     if inLocal {
-        t.rwmu.Lock()
         defer t.rwmu.Unlock()
         localStore[key] = value
         return
     }
+    t.rwmu.Unlock()
     // otherwise need to do a remote put
     t.sendRemoteTableOp(PUT, key, value)
 }
@@ -146,17 +149,27 @@ func (t *Table) Flush() {
     t.rwmu.Lock()
     localBuffer := t.updateBuffer
     t.updateBuffer = make(map[string]interface{})
-    t.rwmu.Unlock()
+    sortedByPartition := make(map[int][]UpdateOp)
     for key, val := range localBuffer {
-        t.sendRemoteTableOp(UPDATE, key, val)
+        partition := t.partitioner.Which(key) % t.nPartitions
+        sortedByPartition[partition] = append(sortedByPartition[partition], 
+            UpdateOp{key, val})
+        // t.sendRemoteTableOp(UPDATE, key, val)
+    }
+    t.rwmu.Unlock()
+    for partition, updates := range sortedByPartition {
+        t.rwmu.RLock()
+        owner := t.PartitionMap[partition]
+        t.rwmu.RUnlock()
+        t.myWorker.sendRemoteTableOp(owner, t.Name, UPDATELIST, "", nil, updates, partition)
     }
 }
 
 // returns partition of the table's store that is the partition # of kernelFunction
 func (t *Table) GetPartition(partition int) map[string]interface{} {
+    t.rwmu.RLock()
     owner := t.PartitionMap[partition]
     if owner == t.myWorker.me {
-        t.rwmu.RLock()
         defer t.rwmu.RUnlock()
         localStore, ok := t.Store[partition]
         if !ok || localStore == nil {
@@ -164,12 +177,16 @@ func (t *Table) GetPartition(partition int) map[string]interface{} {
         }
         return t.Store[partition]
     }
+    t.rwmu.RUnlock()
     reply := t.myWorker.sendRemoteTableOp(owner, t.Name, PARTITION,
-        "", nil, partition)
+        "", nil, nil, partition)
     return reply.Partition
 }
 
 func (t *Table) getPartitionAndDelete(partition int) map[string]interface{} {
+    t.rwmu.Lock()
+    defer t.rwmu.Unlock()
+
     localStore := t.Store[partition]
 
     delete(t.Store, partition)
@@ -194,9 +211,11 @@ func (t *Table) getLocal(key string) (map[string]interface{}, bool) {
 }
 
 func (t *Table) sendRemoteTableOp(op Op, key string, value interface{}) TableOpReply {
+    t.rwmu.RLock()
     partition := t.partitioner.Which(key) % t.nPartitions
     remoteWorker := t.PartitionMap[partition]
-    return t.myWorker.sendRemoteTableOp(remoteWorker, t.Name, op, key, value, partition)
+    t.rwmu.RUnlock()
+    return t.myWorker.sendRemoteTableOp(remoteWorker, t.Name, op, key, value, nil, partition)
 }
 
 func (t *Table) collectData() map[string]interface{} {

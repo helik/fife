@@ -196,6 +196,7 @@ type TableOpArgs struct {
     Op          Op
     Key         string
     Value       interface{}
+    Updates      []UpdateOp
     Partition   int
 }
 
@@ -207,12 +208,13 @@ type TableOpReply struct {
 }
 
 func (w *Worker) sendRemoteTableOp(worker int, tableName string, operation Op,
-    key string, value interface{}, partition int) TableOpReply {
+    key string, value interface{}, updateList []UpdateOp, partition int) TableOpReply {
     args := TableOpArgs{
         TableName: tableName,
         Op: operation,
         Key: key,
         Value: value,
+        Updates: updateList,
         Partition: partition,
     }
     var reply TableOpReply
@@ -251,6 +253,10 @@ func (w *Worker) TableOpRPC(args *TableOpArgs, reply *TableOpReply) {
         targetTable.Update(args.Key, args.Value)
     case PARTITION:
         reply.Partition = targetTable.GetPartition(args.Partition)
+    case UPDATELIST:
+        for _, update := range args.Updates {
+            targetTable.Update(update.Key, update.Value)
+        }
     }
 
     reply.Done = true
