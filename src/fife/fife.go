@@ -3,6 +3,8 @@ package fife
 import (
         "sync"
         "labrpc"
+        "crypto/rand"
+        "math/big"
  )
 
 type Fife struct {
@@ -14,7 +16,17 @@ type Fife struct {
     //tables
 }
 
-//test code provides fife with tables
+//From kvraft. Generate a large random number
+func nrand() int64 {
+	max := big.NewInt(int64(1) << 62)
+	bigx, _ := rand.Int(rand.Reader, max)
+	x := bigx.Int64()
+	return x
+}
+
+//The application will provide Fife with tables.
+//This is called in an application's control function, with Workers already
+//set up with these tables.
 func (f *Fife) Setup(tables map[string]*Table) {
   f.tables = tables
 
@@ -24,8 +36,7 @@ func (f *Fife) Setup(tables map[string]*Table) {
   f.partitionTables() //partition tables among workers.
   ok := f.configWorkers() //send all tables to workers
   if !ok{
-    //TODO what should we do if some workers fail to configure?
-    //presumably, re-partition that data and send it to the remaining workers
+    //TODO If this fails, a worker is unreachable or crashed. Should remove that server and continue.
   }
 }
 
@@ -36,11 +47,6 @@ func CreateFife(workers []*labrpc.ClientEnd) *Fife {
   fife.workers = workers
   fife.tables = make(map[string]*Table)
   return fife
-}
-
-//done with this server
-func (f *Fife) Kill() {
-
 }
 
 //Pass the workers initial data and table partitions
@@ -77,6 +83,24 @@ func (f *Fife) configWorkers() bool {
   return !failure
 }
 
+func (f *Fife) sendConfigChange(partition int, old int, newW int) {
+  for w := range(f.workers){
+    go func(w int){
+      args := &PartitionUpdateArgs{}
+      args.UpdateNum = nrand()
+      args.PartitionNum  = partition
+      args.OldWorker = old
+      args.NewWorker = newW
+      reply := &Reply{} //generic reply
+      ok := f.workers[w].Call("Worker.PartitionUpdate", args, reply)
+      if !ok {
+        panic("config change failed")
+      }
+    }(w)
+  }
+  return
+}
+
 //Pass worker the string key to the function they should use
 func (f *Fife) Run(kernelFunction string, numInstances int, //TODO should numPartitions be numInstances?
     args []interface{}, loc LocalityConstriant) { //args is the args for the kernel function. tables passed separately
@@ -87,35 +111,17 @@ func (f *Fife) Run(kernelFunction string, numInstances int, //TODO should numPar
 
     //now, start running. we have some num workers and numInstances to run
     f.barrier.Add(numInstances)
-    allInstances := make(chan int, numInstances) //Used in no locality situation
-    for i := 0; i < numInstances; i ++ {
-      allInstances <- i
-    }
-    for w := range(f.workers){
-      go func(w int){
-        worker := f.workers[w]
-        rArgs := &RunArgs{}
-        rArgs.KernelFunctionName = kernelFunction
-        rArgs.KernelArgs = args
-        if loc.Loc == LOCALITY_REQ {
-          partitions := f.tables[loc.Table].PartitionMap
-          myInstances := []int{}
-          for partition, worker := range(partitions){
-            if worker == w{
-              myInstances = append(myInstances, partition)
-            }
-          }
-          //now, run all instances
-          for _, instance := range(myInstances){
-            rArgs.KernelNumber = instance
-            ok := worker.Call("Worker.Run", rArgs, nil)
-            if ok {
-              f.barrier.Done()
-            }else {
-              panic("failed worker.Run not impelemnted in fife run")
-            }
-          }
-        }else{ //we can run whichever instances need running
+    if loc.Loc != LOCALITY_REQ {
+      allInstances := make(chan int, numInstances) //Used in no locality situation
+      for i := 0; i < numInstances; i ++ {
+        allInstances <- i
+      }
+      for w := range(f.workers){
+        go func(w int){
+          worker := f.workers[w]
+          rArgs := &RunArgs{}
+          rArgs.KernelFunctionName = kernelFunction
+          rArgs.KernelArgs = args
           for {
             instance, more := <- allInstances
             if more { //something to run
@@ -129,9 +135,84 @@ func (f *Fife) Run(kernelFunction string, numInstances int, //TODO should numPar
               return //chan has been closed, nothing else to run
             }
           }
+        }(w)
+      }
+      return //done
+    }
+
+    //otherwise, we have the locality required case
+    workerAssignments := make(map[int][]int) //map worker to kernel instances it still needs to run
+    workersDone := false //is this worker done? read by worker control
+    var mapLock sync.RWMutex
+    partitions := f.tables[loc.Table].PartitionMap
+    for partition, worker := range(partitions){
+      workerAssignments[worker] = append(workerAssignments[worker], partition)
+    }
+    //start worker controllers
+    for w := range(f.workers){
+      go func(w int){
+        worker := f.workers[w]
+        rArgs := &RunArgs{}
+        rArgs.KernelFunctionName = kernelFunction
+        rArgs.KernelArgs = args
+        //now, run all instances
+        for { //TODO could rewrite this using channels
+          mapLock.RLock()
+          if workersDone {
+            mapLock.RUnlock()
+            return
+          }
+          if len(workerAssignments[w]) == 0 {
+            mapLock.RUnlock()
+            continue //wait till we are assigned a task
+          }
+          //otherwise, run this kernel
+          instance := workerAssignments[w][0]
+          mapLock.RUnlock()
+          rArgs.KernelNumber = instance
+          ok := worker.Call("Worker.Run", rArgs, nil)
+          if ok {
+            mapLock.Lock()
+            f.barrier.Done()
+            workerAssignments[w] = workerAssignments[w][1:] //remove finished instance
+            mapLock.Unlock()
+          }else {
+            panic("failed worker.Run not impelemnted in fife run")
+          }
         }
       }(w)
     }
+
+    //while worker controllers are running, check for task stealing opportunities
+    for {
+      doneWorkers := []int{}
+      many := []int{}
+      mapLock.Lock()
+      for worker, assignments := range(workerAssignments) {
+        if len(assignments) == 0{
+          doneWorkers = append(doneWorkers, worker)
+        }
+        if len(assignments) > 2 {
+          many = append(many, worker)
+        }
+      }
+      if len(doneWorkers) > 0 && len(many) > 0 {
+        from := many[0]
+        to := doneWorkers[0]
+        task := workerAssignments[from][len(workerAssignments[from])-1] //steal last task
+        f.tables[loc.Table].PartitionMap[task] = to
+        f.sendConfigChange(task, from, to)
+        workerAssignments[from] = workerAssignments[from][:len(workerAssignments[from])-1]
+        mapLock.Unlock()
+      }else if len(doneWorkers) == len(f.workers){
+        workersDone = true
+        mapLock.Unlock()
+        return
+      }else{
+        mapLock.Unlock()
+      }
+    }
+
 }
 
 //For each table, match table partitions with workers
@@ -169,4 +250,8 @@ func (f *Fife) CollectData(tableName string) map[string]interface{} {
     }
   }
   return allData
+}
+
+func (f *Fife) Kill() {
+
 }

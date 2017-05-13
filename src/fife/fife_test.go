@@ -5,12 +5,17 @@ package fife
 import (
   "testing"
   "fmt"
+  "time"
+  "strconv"
 )
 
 const name string = "first_table"
 
 //data to initialize fife table with
 var data map[string]interface{} = map[string]interface{}{"apple":1, "banana":100, "zebra":200, "cat":40,"annie":2.2}
+
+var data_large map[string]interface{} = map[string]interface{}{"0":0, "1":1, "2":2, "3":3,
+              "4":4, "5":5, "6":6, "7":7, "8":8, "9":9, "10":10, "11":11, "12":12}
 
 func TestConfig(t *testing.T){
   workers := 3
@@ -73,6 +78,19 @@ func kernel_simple(kernelInstance int, args []interface{}, tables map[string]*Ta
 
 func kernel_locality(kernelInstance int, args []interface{}, tables map[string]*Table){
   fmt.Printf("kernel %v. table store %v\n",kernelInstance, tables[name].Store)
+}
+
+//kernel where one kernel instance waits
+func kernel_wait(kernelInstance int, args []interface{}, tables map[string]*Table){
+  if kernelInstance == 0 {
+    time.Sleep(time.Second)
+  }
+}
+
+//partitions into however many int imputs data_large has
+func partition_many(key string) int{
+  val, _ := strconv.Atoi(key)
+  return val
 }
 
 func partition_simple(key string) int{
@@ -184,10 +202,39 @@ func TestLocality(t *testing.T){
 
   cfg.Fife.Setup(map[string]*Table{tableName:table})
 
-  fmt.Printf("Should print: \nKernel 0, a keys; kernel 1; b keys; kernel 3; c keys, kernel 3, others\n")
+  fmt.Printf("Should print: \nKernel 0, a keys; kernel 1; b keys; kernel 2; c keys, kernel 3, others\n")
   cfg.Fife.Run("locality", 4, []interface{}{}, LocalityConstriant{LOCALITY_REQ, tableName})
 
   cfg.Fife.Barrier()
 
   cfg.CheckDataStore()
+}
+
+func TestRePartition(t *testing.T){
+  cfg := Make_config(t, 3) //config with same # workers as # partitions
+
+  tableName := name
+
+  //init workers
+  kernName := "time" //shared kernel func between workers
+  kernMap := map[string]KernelFunction{kernName:kernel_locality}
+  for _, w := range(cfg.Workers){
+    table := MakeTable(tableName, Accumulator{}, Partitioner{partition_many}, 13, w) //not using accumulator or partitioner for this test
+    w.Setup(kernMap, map[string]*Table{tableName:table})
+  }
+
+  table := MakeTable(tableName, Accumulator{}, Partitioner{partition_many}, 13, nil)
+  table.AddData(data_large)
+
+  cfg.Fife.Setup(map[string]*Table{tableName:table})
+
+  cfg.CheckDataStore()
+
+  fmt.Println("Should repartition")
+  cfg.Fife.Run("time", 13, []interface{}{}, LocalityConstriant{LOCALITY_REQ, tableName})
+
+  cfg.Fife.Barrier()
+
+  cfg.CheckDataStore()
+
 }
